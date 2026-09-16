@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+
+# Serverless Framework and AWS build artifacts
+.serverless/
+.aws-sam/
+dist/
+build/
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+
+# Terraform state and local files
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Editor and operating system files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# npm debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+*.md
