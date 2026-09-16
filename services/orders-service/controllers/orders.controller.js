@@ -12,8 +12,11 @@ function createOrdersController({ orderService }) {
   return async function createOrder(request, response, next) {
     try {
       const order = validateOrderPayload(request.body);
-      await orderService.createOrder(order);
-      response.status(202).json({ message: 'Order accepted' });
+      const result = await orderService.createOrder(order);
+      response.status(202).json({
+        message: 'Order accepted',
+        eventId: result.eventId
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         next(new AppError('Invalid order payload', 400, 'INVALID_ORDER'));
