@@ -12,6 +12,19 @@ const { createOrdersRoute } = require('../routes/orders.route');
 function createApp({ orderService, logger = createLogger({ service: 'orders-service' }) }) {
   const app = express();
 
+  app.use((request, response, next) => {
+    if (!Buffer.isBuffer(request.body)) {
+      next();
+      return;
+    }
+
+    try {
+      request.body = JSON.parse(request.body.toString('utf8'));
+      next();
+    } catch (error) {
+      next(new Error('Invalid JSON body'));
+    }
+  });
   app.use(express.json());
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
