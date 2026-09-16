@@ -1,0 +1,22 @@
+service: orders-service
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ${opt:region, 'us-east-2'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    NODE_ENV: ${env:NODE_ENV, 'production'}
+    SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: ${env:SQS_QUEUE_ARN}
+
+functions:
+  app:
+    handler: src/handler.handler
+    url: true
