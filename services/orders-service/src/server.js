@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const { createApp } = require('./app');
 const { createLogger } = require('../middlewares/logger');
 const { AppError } = require('../middlewares/error.middleware');
