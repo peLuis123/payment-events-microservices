@@ -5,6 +5,8 @@
   "description": "Receives payment orders and publishes payment events to SQS.",
   "main": "src/handler.js",
   "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --runInBand"
@@ -16,7 +18,8 @@
     "@aws-sdk/client-sqs": "^3.883.0",
     "express": "^5.1.0",
     "serverless-http": "^3.2.0",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "nodemon": "^3.1.14"
   },
   "devDependencies": {
     "jest": "^30.1.3",

@@ -33,4 +33,19 @@ describe('createLogger', () => {
       message: 'Payment event failed'
     });
   });
+
+  test('writes a friendly local message when pretty mode is enabled', () => {
+    const write = jest.fn();
+    const logger = createLogger({
+      service: 'orders-service',
+      pretty: true,
+      write
+    });
+
+    logger.info({ port: 3000 }, 'Orders service is running');
+
+    expect(write).toHaveBeenCalledWith(
+      '[orders-service] Orders service is running on http://localhost:3000'
+    );
+  });
 });

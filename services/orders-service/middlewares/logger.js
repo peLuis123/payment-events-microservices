@@ -1,10 +1,10 @@
 /**
  * Creates a structured JSON logger for the service.
  *
- * @param {{ service: string, write?: (entry: string) => void }} options - Logger options.
+ * @param {{ service: string, pretty?: boolean, write?: (entry: string) => void }} options - Logger options.
  * @returns {{ info: Function, warn: Function, error: Function }} Logger methods.
  */
-function createLogger({ service, write = console.log }) {
+function createLogger({ service, pretty = false, write = console.log }) {
   /**
    * Writes a structured log entry without serializing an entire payload.
    *
@@ -14,15 +14,23 @@ function createLogger({ service, write = console.log }) {
    * @returns {void}
    */
   function log(level, context, message) {
-    write(
-      JSON.stringify({
-        ...context,
-        service,
-        level,
-        message,
-        timestamp: new Date().toISOString()
-      })
-    );
+    const entry = {
+      ...context,
+      service,
+      level,
+      message,
+      timestamp: new Date().toISOString()
+    };
+
+    if (pretty) {
+      const location = context.port
+        ? ` on http://localhost:${context.port}`
+        : '';
+      write(`[${service}] ${message}${location}`);
+      return;
+    }
+
+    write(JSON.stringify(entry));
   }
 
   return {
