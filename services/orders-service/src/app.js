@@ -14,7 +14,7 @@ function createApp({ orderService, logger = createLogger({ service: 'orders-serv
   const app = express();
 
   app.use((request, response, next) => {
-    if (!Buffer.isBuffer(request.body)) {
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
       next();
       return;
     }
@@ -27,6 +27,7 @@ function createApp({ orderService, logger = createLogger({ service: 'orders-serv
     }
   });
   app.use(express.json());
+  app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
