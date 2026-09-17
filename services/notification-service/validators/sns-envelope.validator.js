@@ -1,10 +1,21 @@
 const { z } = require('zod');
 
 const snsEnvelopeSchema = z.object({
+  EventSource: z.literal('aws:sns').optional(),
+  EventVersion: z.string().optional(),
   EventSubscriptionArn: z.string().trim().min(1).optional(),
   Sns: z.object({
     MessageId: z.string().trim().min(1),
-    Message: z.string().trim().min(1)
+    Message: z.string().trim().min(1),
+    Type: z.string().optional(),
+    TopicArn: z.string().optional(),
+    Timestamp: z.string().optional(),
+    SignatureVersion: z.string().optional(),
+    Signature: z.string().optional(),
+    SigningCertUrl: z.string().optional(),
+    Subject: z.string().nullable().optional(),
+    UnsubscribeUrl: z.string().optional(),
+    MessageAttributes: z.record(z.string(), z.unknown()).optional()
   }).strict()
 }).strict();
 
