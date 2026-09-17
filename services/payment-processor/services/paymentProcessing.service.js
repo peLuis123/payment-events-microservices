@@ -10,7 +10,8 @@
 function createPaymentProcessor({
   processPayment,
   hasProcessed,
-  markProcessed
+  markProcessed,
+  persistResult
 }) {
   /**
    * Processes an event once and skips duplicate deliveries.
@@ -28,7 +29,15 @@ function createPaymentProcessor({
     }
 
     const result = await processPayment(event.data);
-    await markProcessed(event.eventId);
+    if (persistResult) {
+      await persistResult({
+        eventId: event.eventId,
+        order: event.data,
+        payment: result
+      });
+    } else {
+      await markProcessed(event.eventId);
+    }
     return result;
   }
 
