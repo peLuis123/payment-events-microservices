@@ -1,0 +1,25 @@
+{
+  "name": "notification-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consumes payment events from SNS and sends notifications.",
+  "main": "src/handler.js",
+  "scripts": {
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --runInBand"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.883.0",
+    "dotenv": "^16.6.1",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "jest": "^30.1.3",
+    "serverless": "^4.18.1",
+    "serverless-offline": "^14.4.0"
+  }
+}
