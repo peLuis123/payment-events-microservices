@@ -20,4 +20,5 @@ provider:
 functions:
   app:
     handler: src/handler.handler
-    url: true
+    url:
+      cors: true
