@@ -85,4 +85,18 @@ function createProductionHandler({
   });
 }
 
-module.exports.createProductionHandler = createProductionHandler;
+let productionHandler;
+
+/**
+ * AWS Lambda entry point for the payment processor.
+ *
+ * @param {object} event - SQS Lambda event.
+ * @param {object} context - Lambda execution context.
+ * @returns {Promise<object>} Batch processing result.
+ */
+async function handler(event, context) {
+  productionHandler ??= createProductionHandler();
+  return productionHandler(event, context);
+}
+
+module.exports = { createSqsHandler, createProductionHandler, handler };
