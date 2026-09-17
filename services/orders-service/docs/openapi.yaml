@@ -4,11 +4,8 @@ info:
   version: 0.1.0
   description: Receives payment orders and publishes asynchronous payment events.
 servers:
-  - url: https://{functionUrl}
-    description: AWS Lambda Function URL
-    variables:
-      functionUrl:
-        default: example.lambda-url.us-east-2.on.aws
+  - url: /
+    description: Current Orders Service host
 paths:
   /orders:
     post:
