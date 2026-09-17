@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Orders Service API
+  version: 0.1.0
+  description: Receives payment orders and publishes asynchronous payment events.
+servers:
+  - url: https://{functionUrl}
+    description: AWS Lambda Function URL
+    variables:
+      functionUrl:
+        default: example.lambda-url.us-east-2.on.aws
+paths:
+  /orders:
+    post:
+      summary: Accept a payment order
+      operationId: createOrder
+      description: Validates and queues an order. Payment processing happens asynchronously.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            example:
+              orderId: order-123
+              customerId: customer-456
+              amount: 49.99
+              currency: USD
+      responses:
+        "202":
+          description: Order accepted and published to SQS.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedOrderResponse"
+        "400":
+          description: Invalid order payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected internal error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [orderId, customerId, amount, currency]
+      properties:
+        orderId:
+          type: string
+          pattern: "^order-[A-Za-z0-9-]+$"
+        customerId:
+          type: string
+          pattern: "^customer-[A-Za-z0-9-]+$"
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          example: USD
+    AcceptedOrderResponse:
+      type: object
+      required: [message, eventId]
+      properties:
+        message:
+          type: string
+          example: Order accepted
+        eventId:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        code:
+          type: string

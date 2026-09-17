@@ -1,0 +1,40 @@
+# Payment event contracts
+payment.requested:
+  producer: orders-service
+  transport: SQS payment-queue
+  schema:
+    eventId: string
+    eventType: payment.requested
+    source: orders-service
+    occurredAt: ISO-8601 datetime
+    data:
+      orderId: order-[A-Za-z0-9-]+
+      customerId: customer-[A-Za-z0-9-]+
+      amount: positive number
+      currency: three uppercase letters
+
+payment.approved:
+  producer: payment-processor
+  transport: SNS payment-events
+  schema:
+    eventId: string
+    eventType: payment.approved
+    source: payment-processor
+    occurredAt: ISO-8601 datetime
+    data:
+      orderId: string
+      status: approved
+      reason: string
+
+payment.rejected:
+  producer: payment-processor
+  transport: SNS payment-events
+  schema:
+    eventId: string
+    eventType: payment.rejected
+    source: payment-processor
+    occurredAt: ISO-8601 datetime
+    data:
+      orderId: string
+      status: rejected
+      reason: string

@@ -2,6 +2,7 @@ const express = require('express');
 const { createLogger } = require('../middlewares/logger');
 const { createErrorHandler } = require('../middlewares/error.middleware');
 const { createOrdersRoute } = require('../routes/orders.route');
+const { createDocsRoute } = require('../routes/docs.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -26,6 +27,7 @@ function createApp({ orderService, logger = createLogger({ service: 'orders-serv
     }
   });
   app.use(express.json());
+  app.use('/docs', createDocsRoute());
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
 
