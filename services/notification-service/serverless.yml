@@ -1,0 +1,43 @@
+service: notification-service
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ${opt:region, 'us-east-2'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    NODE_ENV: ${env:NODE_ENV, 'production'}
+    SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
+
+functions:
+  notification:
+    handler: src/handler.handler
+
+resources:
+  Resources:
+    NotificationDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: notification-service-dlq-${sls:stage}
+        MessageRetentionPeriod: 1209600
+
+    NotificationSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn: ${env:SNS_TOPIC_ARN}
+        Protocol: lambda
+        Endpoint:
+          Fn::GetAtt: [NotificationLambdaFunction, Arn]
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [NotificationDeadLetterQueue, Arn]
+
+    NotificationLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName:
+          Ref: NotificationLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: sns.amazonaws.com
+        SourceArn: ${env:SNS_TOPIC_ARN}
