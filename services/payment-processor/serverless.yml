@@ -1,0 +1,53 @@
+service: payment-processor
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ${opt:region, 'us-east-2'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    AWS_REGION: ${env:AWS_REGION, 'us-east-2'}
+    SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
+    DYNAMODB_TABLE: ${env:DYNAMODB_TABLE}
+    SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - ${env:SQS_QUEUE_ARN}
+            - Fn::GetAtt: [ProcessorDeadLetterQueue, Arn]
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource: ${env:DYNAMODB_TABLE_ARN}
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: ${env:SNS_TOPIC_ARN}
+
+functions:
+  processor:
+    handler: src/handler.handler
+    events:
+      - sqs:
+          arn: ${env:SQS_QUEUE_ARN}
+          batchSize: 10
+          maximumBatchingWindow: 5
+          functionResponseType: ReportBatchItemFailures
+          enabled: true
+
+resources:
+  Resources:
+    ProcessorDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: payment-processor-dlq-${sls:stage}
+        MessageRetentionPeriod: 1209600
