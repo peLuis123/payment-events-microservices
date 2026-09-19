@@ -1,0 +1,42 @@
+service: webhook-service
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: ${opt:region, 'us-east-2'}
+  stage: ${opt:stage, 'dev'}
+  environment:
+    NODE_ENV: ${env:NODE_ENV, 'production'}
+    PAYMENT_EVENTS_TOPIC_ARN: ${env:PAYMENT_EVENTS_TOPIC_ARN}
+    STRIPE_WEBHOOK_SECRET_PARAM: ${env:STRIPE_WEBHOOK_SECRET_PARAM}
+    PAYPAL_WEBHOOK_SECRET_PARAM: ${env:PAYPAL_WEBHOOK_SECRET_PARAM}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/payment-events/${sls:stage}/*
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: ${env:PAYMENT_EVENTS_TOPIC_ARN}
+
+functions:
+  webhook:
+    handler: src/handler.handler
+    url:
+      cors: true
+    timeout: 15
+    events: []
+
+resources:
+  Resources:
+    WebhookDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: webhook-service-dlq-${sls:stage}
+        MessageRetentionPeriod: 1209600
