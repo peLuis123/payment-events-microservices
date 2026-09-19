@@ -169,3 +169,67 @@ deja el flujo de escritura y procesamiento listo para esa evolución.
   moverse a una store compartida para una garantía completa entre cold starts.
 - La tabla y el topic ya existen en AWS, mientras que la infraestructura futura
   puede centralizarse completamente con Terraform.
+
+## Fase 2: pasarela de pagos
+
+El MVP puede evolucionar sin reemplazar los microservicios actuales. La
+primera integración será Stripe y después se añadirá PayPal mediante adapters
+intercambiables. Las credenciales se guardarán en AWS Secrets Manager o SSM,
+nunca en el código ni en Git.
+
+### Arquitectura objetivo
+
+```text
+Frontend
+   |
+   v
+Orders Service -> SQS payment-queue -> Payment Processor
+				      |
+				      +-> Stripe Adapter
+				      +-> PayPal Adapter
+				      |
+				      v
+			      Payment Provider
+				      |
+				      v
+			      Webhook Service
+				      |
+		 +--------------------+--------------------+
+		 v                    v                    v
+	     DynamoDB             SNS events       Ledger/Balance
+		 |                    |
+		 v                    v
+	     Query API        Notification Service -> Email provider
+```
+
+### Estados de pago
+
+Los pagos reales deben manejar al menos `pending`, `approved`, `rejected`,
+`cancelled`, `refunded` y `partially_refunded`. Una respuesta inicial del
+proveedor no siempre confirma el cobro; la confirmación definitiva debe llegar
+por un webhook firmado.
+
+### Casos de uso de la fase 2
+
+- Crear un Payment Intent en Stripe desde una orden válida.
+- Crear una orden de PayPal usando el mismo contrato interno.
+- Confirmar pagos mediante webhooks firmados.
+- Evitar cobros duplicados con `eventId` y `providerEventId`.
+- Registrar un ledger inmutable de cargos, reembolsos y comisiones.
+- Consultar balances y movimientos para el futuro frontend.
+- Enviar correos de confirmación, rechazo y reembolso.
+- Procesar reembolsos totales y parciales.
+- Reconciliar periódicamente el estado local contra Stripe o PayPal.
+
+La implementación de esta fase está desglosada en [TASKS.md](TASKS.md) y en
+el roadmap de cada servicio.
+
+### Qué significa “completa”
+
+La pasarela se considerará completa para producción cuando, además de crear y
+confirmar pagos, pueda mantener un ciclo financiero trazable: estados de pago,
+ledger inmutable de doble partida, balances, comisiones, reembolsos, disputas,
+reconciliación con los proveedores, webhooks firmados, idempotencia, auditoría,
+autorización, límites de uso, backups, recuperación y monitoreo. Las tareas de
+esta definición están incluidas en el roadmap y deben completarse antes de
+procesar dinero real.
