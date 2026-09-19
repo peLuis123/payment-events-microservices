@@ -233,3 +233,10 @@ reconciliación con los proveedores, webhooks firmados, idempotencia, auditoría
 autorización, límites de uso, backups, recuperación y monitoreo. Las tareas de
 esta definición están incluidas en el roadmap y deben completarse antes de
 procesar dinero real.
+
+### Idempotencia de pagos
+
+La API de checkout usará `Idempotency-Key` para evitar crear dos pagos ante
+reintentos del cliente. Los webhooks usarán `providerEventId` para evitar
+procesar dos veces el mismo evento. Para llamadas a PayPal se enviará
+`PayPal-Request-Id`; para Stripe se enviará `Idempotency-Key`.
