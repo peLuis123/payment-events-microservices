@@ -18,6 +18,14 @@ function createApp({
 }) {
   const app = express();
 
+  app.get('/', (request, response) => {
+    response.json({
+      service: 'webhook-service',
+      status: 'ok',
+      message: 'Webhook API is running'
+    });
+  });
+
   app.use('/webhooks/stripe', createStripeRoute({
     verifyStripe,
     mapStripeEvent,
