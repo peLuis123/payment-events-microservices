@@ -5,11 +5,13 @@ describe('loadEnvironment', () => {
     expect(
       loadEnvironment({
         AWS_REGION: 'us-east-2',
-        SQS_QUEUE_URL: 'https://sqs.us-east-2.amazonaws.com/123/payment-queue'
+        SQS_QUEUE_URL: 'https://sqs.us-east-2.amazonaws.com/123/payment-queue',
+        PAYMENT_PROCESSOR_CHECKOUT_URL: 'https://processor.example.com'
       })
     ).toEqual({
       AWS_REGION: 'us-east-2',
-      SQS_QUEUE_URL: 'https://sqs.us-east-2.amazonaws.com/123/payment-queue'
+      SQS_QUEUE_URL: 'https://sqs.us-east-2.amazonaws.com/123/payment-queue',
+      PAYMENT_PROCESSOR_CHECKOUT_URL: 'https://processor.example.com'
     });
   });
 

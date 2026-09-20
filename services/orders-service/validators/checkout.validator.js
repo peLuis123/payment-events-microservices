@@ -4,7 +4,8 @@ const checkoutSessionSchema = z.object({
   merchantId: z.string().trim().min(1),
   items: z.array(z.object({
     productId: z.string().trim().min(1),
-    quantity: z.number().int().positive()
+    quantity: z.number().int().positive(),
+    unitAmount: z.number().int().positive()
   }).strict()).min(1),
   currency: z.string().trim().regex(/^[A-Z]{3}$/),
   paymentProvider: z.enum(['stripe', 'paypal']),

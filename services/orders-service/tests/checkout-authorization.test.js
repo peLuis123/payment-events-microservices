@@ -2,7 +2,7 @@ const request = require('supertest');
 const { createApp } = require('../src/app');
 
 const payload = {
-  items: [{ productId: 'product-123', quantity: 1 }],
+  items: [{ productId: 'product-123', quantity: 1, unitAmount: 4999 }],
   currency: 'USD',
   paymentProvider: 'stripe',
   successUrl: 'https://frontend.test/success',

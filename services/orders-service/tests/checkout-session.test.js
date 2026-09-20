@@ -17,7 +17,7 @@ describe('POST /checkout/sessions', () => {
       logger: { warn: jest.fn(), error: jest.fn() }
     });
     const payload = {
-      items: [{ productId: 'product-123', quantity: 2 }],
+      items: [{ productId: 'product-123', quantity: 2, unitAmount: 4999 }],
       currency: 'USD',
       paymentProvider: 'stripe',
       successUrl: 'https://frontend.test/success',

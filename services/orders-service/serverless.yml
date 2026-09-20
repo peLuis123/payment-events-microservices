@@ -9,6 +9,7 @@ provider:
   environment:
     NODE_ENV: ${env:NODE_ENV, 'production'}
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
+    PAYMENT_PROCESSOR_CHECKOUT_URL: ${env:PAYMENT_PROCESSOR_CHECKOUT_URL}
   iam:
     role:
       statements:

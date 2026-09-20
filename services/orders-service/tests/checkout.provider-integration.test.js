@@ -27,7 +27,7 @@ describe('checkout provider integration', () => {
       .set('X-Merchant-Id', 'merchant-123')
       .set('Idempotency-Key', 'checkout-stripe-123')
       .send({
-        items: [{ productId: 'product-123', quantity: 1 }],
+        items: [{ productId: 'product-123', quantity: 1, unitAmount: 4999 }],
         currency: 'USD',
         paymentProvider: 'stripe',
         successUrl: 'https://frontend.test/success',

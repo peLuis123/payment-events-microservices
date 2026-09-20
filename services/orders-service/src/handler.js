@@ -5,6 +5,8 @@ const { createLogger } = require('../middlewares/logger');
 const { createOrderService } = require('../services/order.service');
 const { createSqsRepository } = require('../repositories/sqs.repository');
 const { loadEnvironment } = require('../validators/env.validator');
+const { createCheckoutService } = require('../services/checkout.service');
+const { createPaymentProcessorClient } = require('../clients/payment-processor.client');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -19,14 +21,17 @@ function createHandler({ app }) {
 /**
  * Composes the production handler and its AWS dependencies.
  *
- * @param {{ environment?: NodeJS.ProcessEnv, client?: object, logger?: object, createEventId?: Function, now?: Function }} dependencies - Runtime dependencies.
+ * @param {{ environment?: NodeJS.ProcessEnv, client?: object, fetchImpl?: Function, logger?: object, createEventId?: Function, createCheckoutId?: Function, createPaymentId?: Function, now?: Function }} dependencies - Runtime dependencies.
  * @returns {Function} Lambda-compatible production handler.
  */
 function createProductionHandler({
   environment = process.env,
   client,
+  fetchImpl,
   logger = createLogger({ service: 'orders-service' }),
   createEventId,
+  createCheckoutId,
+  createPaymentId,
   now
 } = {}) {
   const config = loadEnvironment(environment);
@@ -40,7 +45,15 @@ function createProductionHandler({
     createEventId,
     now
   });
-  const app = createApp({ orderService, logger });
+  const checkoutService = createCheckoutService({
+    createCheckoutId,
+    createPaymentId,
+    provider: createPaymentProcessorClient({
+      baseUrl: config.PAYMENT_PROCESSOR_CHECKOUT_URL,
+      fetchImpl
+    })
+  });
+  const app = createApp({ orderService, checkoutService, logger });
 
   return createHandler({ app });
 }

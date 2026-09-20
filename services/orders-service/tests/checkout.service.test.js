@@ -14,7 +14,7 @@ describe('createCheckoutService', () => {
     });
     const request = {
       merchantId: 'merchant-123',
-      items: [{ productId: 'product-123', quantity: 1 }],
+      items: [{ productId: 'product-123', quantity: 1, unitAmount: 4999 }],
       currency: 'USD',
       paymentProvider: 'stripe',
       successUrl: 'https://frontend.test/success',
