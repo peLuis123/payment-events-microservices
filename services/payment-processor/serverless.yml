@@ -10,6 +10,10 @@ provider:
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
     DYNAMODB_TABLE: ${env:DYNAMODB_TABLE}
     SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
+    STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY, ''}
+    PAYPAL_CLIENT_ID: ${env:PAYPAL_CLIENT_ID, ''}
+    PAYPAL_CLIENT_SECRET: ${env:PAYPAL_CLIENT_SECRET, ''}
+    PAYPAL_ENVIRONMENT: ${env:PAYPAL_ENVIRONMENT, 'sandbox'}
   iam:
     role:
       statements:
@@ -42,6 +46,11 @@ functions:
           maximumBatchingWindow: 5
           functionResponseType: ReportBatchItemFailures
           enabled: true
+  checkout:
+    handler: src/checkout-handler.handler
+    url:
+      cors: true
+    timeout: 15
 
 resources:
   Resources:
