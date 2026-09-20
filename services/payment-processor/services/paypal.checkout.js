@@ -45,7 +45,12 @@ function createPayPalCheckout({
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'PayPal checkout failed');
     const approval = result.links?.find((link) => link.rel === 'approve');
-    return { checkoutId: result.id, checkoutUrl: approval?.href, paymentId: result.id };
+    return {
+      checkoutId: result.id,
+      checkoutUrl: approval?.href,
+      paymentId: result.id,
+      providerTransactionId: result.id
+    };
   }
 
   async function captureOrder(orderId, idempotencyKey) {

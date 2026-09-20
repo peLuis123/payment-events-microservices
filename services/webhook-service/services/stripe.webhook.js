@@ -30,7 +30,9 @@ function mapStripeEvent(event) {
     source: 'webhook-service',
     data: {
       orderId: event.data.object.metadata?.orderId,
-      providerPaymentId: event.data.object.id,
+      providerPaymentId: event.data.object.metadata?.paymentId || event.data.object.id,
+      providerTransactionId: event.data.object.id,
+      merchantId: event.data.object.metadata?.merchantId,
       amount: event.data.object.amount_received || event.data.object.amount,
       currency: event.data.object.currency?.toUpperCase()
     }

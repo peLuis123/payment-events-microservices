@@ -38,6 +38,10 @@ function createPaymentStatusService({ savePayment, getPayment = async () => unde
     };
     if (event.data.amount !== undefined) paymentUpdate.amount = event.data.amount;
     if (event.data.currency) paymentUpdate.currency = event.data.currency;
+    if (event.data.merchantId) paymentUpdate.merchantId = event.data.merchantId;
+    if (event.data.providerTransactionId) {
+      paymentUpdate.providerTransactionId = event.data.providerTransactionId;
+    }
     await savePayment(paymentUpdate);
     return { status: 'saved', providerEventId: event.providerEventId };
   }

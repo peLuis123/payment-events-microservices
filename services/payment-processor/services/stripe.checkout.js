@@ -8,6 +8,8 @@ function createStripeCheckout({ secretKey, fetchImpl = fetch, apiBaseUrl = 'http
     body.set('cancel_url', request.cancelUrl);
     body.set('client_reference_id', request.externalReference);
     body.set('metadata[paymentId]', request.paymentId);
+    body.set('payment_intent_data[metadata][paymentId]', request.paymentId);
+    body.set('payment_intent_data[metadata][merchantId]', request.merchantId);
 
     request.items.forEach((item, index) => {
       body.set(`line_items[${index}][quantity]`, String(item.quantity));
@@ -31,7 +33,8 @@ function createStripeCheckout({ secretKey, fetchImpl = fetch, apiBaseUrl = 'http
     return {
       checkoutId: result.id,
       checkoutUrl: result.url,
-      paymentId: result.payment_intent || request.paymentId
+      paymentId: request.paymentId,
+      providerTransactionId: result.payment_intent
     };
   }
 
