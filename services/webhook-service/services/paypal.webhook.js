@@ -84,6 +84,7 @@ function mapPayPalEvent(event) {
     eventType,
     source: 'webhook-service',
     data: {
+      providerEventType: eventTypeName,
       orderId: event.resource.supplementary_data?.related_ids?.order_id,
       providerPaymentId: event.resource.id || event.resource.dispute_id,
       parentPaymentId: event.resource.parent_payment

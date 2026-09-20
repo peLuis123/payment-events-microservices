@@ -20,4 +20,23 @@ describe('provider status handler', () => {
     })).resolves.toEqual({ batchItemFailures: [] });
     expect(processStatus).toHaveBeenCalledWith(JSON.parse(message));
   });
+
+  test('captures an approved PayPal order after persisting its pending status', async () => {
+    const processStatus = jest.fn().mockResolvedValue({ status: 'saved' });
+    const processApproval = jest.fn().mockResolvedValue({ status: 'capture_started' });
+    const handler = createProviderStatusHandler({ processStatus, processApproval });
+    const message = {
+      provider: 'paypal',
+      providerEventId: 'WH-124',
+      eventType: 'payment.pending',
+      data: { providerPaymentId: 'paypal-order-124' }
+    };
+
+    await handler({ Records: [{ Sns: { Message: JSON.stringify(message) } }] });
+
+    expect(processStatus).toHaveBeenCalledWith(message);
+    expect(processApproval).toHaveBeenCalledWith(message);
+    expect(processStatus.mock.invocationCallOrder[0])
+      .toBeLessThan(processApproval.mock.invocationCallOrder[0]);
+  });
 });
