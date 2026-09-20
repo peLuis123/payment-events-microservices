@@ -27,6 +27,7 @@ describe('POST /checkout/sessions', () => {
 
     const response = await request(app)
       .post('/checkout/sessions')
+      .set('X-Merchant-Id', 'merchant-123')
       .set('Idempotency-Key', 'checkout-request-123')
       .send(payload);
 
@@ -39,6 +40,7 @@ describe('POST /checkout/sessions', () => {
     });
     expect(checkoutService.createSession).toHaveBeenCalledWith({
       ...payload,
+      merchantId: 'merchant-123',
       idempotencyKey: 'checkout-request-123'
     });
   });

@@ -1,6 +1,7 @@
 const { z } = require('zod');
 
 const checkoutSessionSchema = z.object({
+  merchantId: z.string().trim().min(1),
   items: z.array(z.object({
     productId: z.string().trim().min(1),
     quantity: z.number().int().positive()
