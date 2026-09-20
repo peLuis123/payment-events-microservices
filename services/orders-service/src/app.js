@@ -3,6 +3,7 @@ const { createLogger } = require('../middlewares/logger');
 const { createErrorHandler } = require('../middlewares/error.middleware');
 const { createOrdersRoute } = require('../routes/orders.route');
 const { createDocsRoute } = require('../routes/docs.route');
+const { createCheckoutRoute } = require('../routes/checkout.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -10,7 +11,7 @@ const { createDocsRoute } = require('../routes/docs.route');
  * @param {{ orderService: { createOrder: Function }, logger?: object }} dependencies - Application dependencies.
  * @returns {import('express').Express} Configured Express application.
  */
-function createApp({ orderService, logger = createLogger({ service: 'orders-service' }) }) {
+function createApp({ orderService, checkoutService = { createSession: async () => ({}) }, logger = createLogger({ service: 'orders-service' }) }) {
   const app = express();
 
   app.use((request, response, next) => {
@@ -29,6 +30,7 @@ function createApp({ orderService, logger = createLogger({ service: 'orders-serv
   app.use(express.json());
   app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
+  app.use(createCheckoutRoute({ checkoutService }));
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
 
