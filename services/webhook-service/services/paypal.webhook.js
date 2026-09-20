@@ -87,7 +87,11 @@ function mapPayPalEvent(event) {
       providerEventType: eventTypeName,
       orderId: event.resource.supplementary_data?.related_ids?.order_id,
       providerPaymentId: event.resource.id || event.resource.dispute_id,
-      parentPaymentId: event.resource.parent_payment
+      parentPaymentId: event.resource.parent_payment,
+      amount: event.resource.amount?.value
+        ? Math.round(Number(event.resource.amount.value) * 100)
+        : undefined,
+      currency: event.resource.amount?.currency_code
     }
   };
 }

@@ -28,7 +28,12 @@ function mapStripeEvent(event) {
     providerEventId: event.id,
     eventType,
     source: 'webhook-service',
-    data: { orderId: event.data.object.metadata?.orderId, providerPaymentId: event.data.object.id }
+    data: {
+      orderId: event.data.object.metadata?.orderId,
+      providerPaymentId: event.data.object.id,
+      amount: event.data.object.amount_received || event.data.object.amount,
+      currency: event.data.object.currency?.toUpperCase()
+    }
   };
 }
 
