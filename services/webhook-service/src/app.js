@@ -34,7 +34,8 @@ function createApp({
   app.use('/webhooks/paypal', createPayPalRoute({
     verifyPayPal,
     mapPayPalEvent,
-    processWebhook
+    processWebhook,
+    logger
   }));
   app.use((error, request, response, next) => {
     if (response.headersSent) {

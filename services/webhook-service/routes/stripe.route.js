@@ -13,7 +13,10 @@ function createStripeRoute({ verifyStripe, mapStripeEvent, processWebhook }) {
     try {
       const payload = request.body.toString('utf8');
       const stripeEvent = verifyStripe(payload, request.get('Stripe-Signature'));
-      await processWebhook(mapStripeEvent(stripeEvent));
+      const mappedEvent = mapStripeEvent(stripeEvent);
+      if (mappedEvent) {
+        await processWebhook(mappedEvent);
+      }
       response.status(202).json({ received: true });
     } catch (error) {
       next(error);

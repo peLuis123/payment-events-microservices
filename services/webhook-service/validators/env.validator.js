@@ -4,8 +4,10 @@ const environmentSchema = z.object({
   AWS_REGION: z.string().trim().min(1),
   NODE_ENV: z.string().trim().min(1),
   PAYMENT_EVENTS_TOPIC_ARN: z.string().trim().regex(/^arn:aws:sns:[a-z0-9-]+:\d{12}:[A-Za-z0-9-_]+$/),
-  STRIPE_WEBHOOK_SECRET_PARAM: z.string().trim().min(1),
-  PAYPAL_WEBHOOK_SECRET_PARAM: z.string().trim().min(1)
+  STRIPE_WEBHOOK_SECRET: z.string().trim().min(1),
+  PAYPAL_WEBHOOK_ID: z.string().trim().min(1),
+  PAYPAL_WEBHOOK_SECRET: z.string().trim().min(1),
+  PAYPAL_ENVIRONMENT: z.enum(['sandbox', 'production'])
 });
 
 /**

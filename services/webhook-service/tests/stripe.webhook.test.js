@@ -29,4 +29,8 @@ describe('Stripe webhook adapter', () => {
     expect(mapStripeEvent({ id: 'evt_123', type: 'charge.refunded', data: { object: { metadata: { orderId: 'order-123' } } } }).eventType).toBe('payment.refunded');
     expect(mapStripeEvent({ id: 'evt_123', type: 'charge.dispute.created', data: { object: { metadata: { orderId: 'order-123' } } } }).eventType).toBe('payment.disputed');
   });
+
+  test('ignores valid but unhandled Stripe events', () => {
+    expect(mapStripeEvent({ id: 'evt_ignored', type: 'charge.updated', data: { object: {} } })).toBeNull();
+  });
 });

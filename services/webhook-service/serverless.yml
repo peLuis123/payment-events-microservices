@@ -9,17 +9,15 @@ provider:
   environment:
     NODE_ENV: ${env:NODE_ENV, 'production'}
     PAYMENT_EVENTS_TOPIC_ARN: ${env:PAYMENT_EVENTS_TOPIC_ARN}
-    STRIPE_WEBHOOK_SECRET_PARAM: ${env:STRIPE_WEBHOOK_SECRET_PARAM}
-    PAYPAL_WEBHOOK_SECRET_PARAM: ${env:PAYPAL_WEBHOOK_SECRET_PARAM}
+    STRIPE_WEBHOOK_SECRET: ${env:STRIPE_WEBHOOK_SECRET}
+    PAYPAL_CLIENT_ID: ${env:PAYPAL_CLIENT_ID, ''}
+    PAYPAL_CLIENT_SECRET: ${env:PAYPAL_CLIENT_SECRET, ''}
+    PAYPAL_WEBHOOK_ID: ${env:PAYPAL_WEBHOOK_ID}
+    PAYPAL_WEBHOOK_SECRET: ${env:PAYPAL_WEBHOOK_SECRET}
+    PAYPAL_ENVIRONMENT: ${env:PAYPAL_ENVIRONMENT, 'sandbox'}
   iam:
     role:
       statements:
-        - Effect: Allow
-          Action:
-            - ssm:GetParameter
-            - ssm:GetParameters
-          Resource:
-            - arn:aws:ssm:${aws:region}:${aws:accountId}:parameter/payment-events/${sls:stage}/*
         - Effect: Allow
           Action:
             - sns:Publish

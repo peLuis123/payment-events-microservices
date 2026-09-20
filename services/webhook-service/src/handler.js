@@ -17,8 +17,7 @@ function createHandler({ app }) {
 /**
  * Creates the production webhook handler.
  *
- * Provider secret retrieval and durable event persistence are injected until
- * SSM/Secrets Manager and the event repository are connected.
+ * Provider secrets are read from the Lambda environment for this sandbox MVP.
  *
  * @param {{ verifyStripe?: Function, mapStripeEvent?: Function, verifyPayPal?: Function, mapPayPalEvent?: Function, processWebhook?: Function, logger?: object }} dependencies - Runtime dependencies.
  * @returns {Function} Lambda handler.
@@ -29,11 +28,16 @@ function createProductionHandler({
   verifyPayPal = (request) => verifyPayPalWebhook(request, async () => true),
   mapPayPalEvent: mapPayPal = mapPayPalEvent,
   processWebhook = async () => undefined,
+  stripeSecret = process.env.STRIPE_WEBHOOK_SECRET,
   logger = createLogger({ service: 'webhook-service' })
 } = {}) {
+  const stripeVerifier = stripeSecret
+    ? (payload, signature) => verifyStripeSignature(payload, signature, stripeSecret)
+    : verifyStripe;
+
   return createHandler({
     app: createApp({
-      verifyStripe,
+      verifyStripe: stripeVerifier,
       mapStripeEvent: mapStripe,
       verifyPayPal,
       mapPayPalEvent: mapPayPal,

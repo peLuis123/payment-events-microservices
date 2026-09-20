@@ -11,11 +11,13 @@ describe('webhook foundation', () => {
       AWS_REGION: 'us-east-2',
       NODE_ENV: 'test',
       PAYMENT_EVENTS_TOPIC_ARN: 'arn:aws:sns:us-east-2:123456789012:payment-events',
-      STRIPE_WEBHOOK_SECRET_PARAM: '/payment-events/test/stripe/webhook-secret',
-      PAYPAL_WEBHOOK_SECRET_PARAM: '/payment-events/test/paypal/webhook-secret'
+      STRIPE_WEBHOOK_SECRET: 'whsec_test',
+      PAYPAL_WEBHOOK_ID: 'webhook-test',
+      PAYPAL_WEBHOOK_SECRET: 'paypal-test',
+      PAYPAL_ENVIRONMENT: 'sandbox'
     })).toMatchObject({
       AWS_REGION: 'us-east-2',
-      STRIPE_WEBHOOK_SECRET_PARAM: '/payment-events/test/stripe/webhook-secret'
+      STRIPE_WEBHOOK_SECRET: 'whsec_test'
     });
   });
 
@@ -31,6 +33,15 @@ describe('webhook foundation', () => {
       message: 'Webhook received'
     });
     expect(entry).not.toHaveProperty('payload');
+  });
+
+  test('writes a readable message in local pretty mode', () => {
+    const write = jest.fn();
+    const logger = createLogger({ service: 'webhook-service', pretty: true, write });
+
+    logger.info({}, 'PayPal webhook received');
+
+    expect(write).toHaveBeenCalledWith('[webhook-service] PayPal webhook received');
   });
 
   test('logs and rethrows webhook failures for retry', async () => {

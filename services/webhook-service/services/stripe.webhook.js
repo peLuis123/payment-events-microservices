@@ -21,7 +21,7 @@ function mapStripeEvent(event) {
     'charge.dispute.created': 'payment.disputed'
   };
   const eventType = types[event.type];
-  if (!eventType) throw new Error(`Unsupported Stripe event: ${event.type}`);
+  if (!eventType) return null;
   return {
     eventId: event.id,
     provider: 'stripe',

@@ -14,4 +14,55 @@ describe('PayPal webhook adapter', () => {
     expect(mapPayPalEvent({ id: 'wh_123', event_type: 'PAYMENT.CAPTURE.REFUNDED', resource: { id: 'cap_123' } }).eventType).toBe('payment.refunded');
     expect(mapPayPalEvent({ id: 'wh_123', event_type: 'CUSTOMER.DISPUTE.CREATED', resource: { dispute_id: 'd_123' } }).eventType).toBe('payment.disputed');
   });
+
+  test('maps the legacy completed sale event to an approved payment', () => {
+    expect(mapPayPalEvent({
+      id: 'wh_sale_123',
+      event_type: 'PAYMENT.SALE.COMPLETED',
+      resource: {
+        id: 'sale_123',
+        parent_payment: 'PAY-123',
+        state: 'completed'
+      }
+    })).toMatchObject({
+      eventType: 'payment.approved',
+      data: {
+        providerPaymentId: 'sale_123',
+        parentPaymentId: 'PAY-123'
+      }
+    });
+  });
+
+  test('maps the complete PayPal capture payload received from the provider', () => {
+    const payload = {
+      id: 'WH-7Y7254563A4550640-11V2185806837105M',
+      event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      resource: {
+        id: '42311647XV020574X',
+        supplementary_data: {
+          related_ids: { order_id: '8U481631H66031715' }
+        },
+        status: 'COMPLETED'
+      }
+    };
+
+    expect(mapPayPalEvent(payload)).toMatchObject({
+      eventType: 'payment.approved',
+      data: {
+        orderId: '8U481631H66031715',
+        providerPaymentId: '42311647XV020574X'
+      }
+    });
+  });
+
+  test('maps a pending capture to a pending payment', () => {
+    expect(mapPayPalEvent({
+      id: 'wh_pending_123',
+      event_type: 'PAYMENT.CAPTURE.PENDING',
+      resource: { id: 'capture_pending' }
+    })).toMatchObject({
+      eventType: 'payment.pending',
+      provider: 'paypal'
+    });
+  });
 });

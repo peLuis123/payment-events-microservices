@@ -1,11 +1,16 @@
 /**
  * Creates a structured logger for provider webhooks.
  *
- * @param {{ service: string, write?: (entry: string) => void }} options - Logger options.
+ * @param {{ service: string, pretty?: boolean, write?: (entry: string) => void }} options - Logger options.
  * @returns {{ info: Function, warn: Function, error: Function }} Logger methods.
  */
-function createLogger({ service, write = console.log }) {
+function createLogger({ service, pretty = false, write = console.log }) {
   function log(level, context, message) {
+    if (pretty) {
+      write(`[${service}] ${message}`);
+      return;
+    }
+
     write(JSON.stringify({
       ...context,
       service,
