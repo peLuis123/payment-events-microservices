@@ -64,7 +64,23 @@ function createPaymentProcessorClient({ baseUrl, fetchImpl = fetch }) {
     return result;
   }
 
-  return { createCheckout, getPayment, createRefund };
+  async function getBalance(merchantId) {
+    const response = await fetchImpl(
+      `${baseUrl.replace(/\/$/, '')}/internal/balances/${encodeURIComponent(merchantId)}`,
+      { method: 'GET', headers: { 'X-Internal-Service': 'orders-service' } }
+    );
+    const result = await response.json();
+    if (!response.ok) {
+      const error = new Error(result.error || 'Payment processor balance query failed');
+      error.statusCode = 502;
+      error.code = result.code || 'BALANCE_QUERY_FAILED';
+      error.isOperational = true;
+      throw error;
+    }
+    return result;
+  }
+
+  return { createCheckout, getPayment, createRefund, getBalance };
 }
 
 module.exports = { createPaymentProcessorClient };
