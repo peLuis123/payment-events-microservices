@@ -44,4 +44,40 @@ describe('createPaymentStatusService', () => {
     expect(savePayment).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: 'pending' }));
     expect(savePayment).toHaveBeenNthCalledWith(2, expect.objectContaining({ status: 'refunded' }));
   });
+
+  test('rejects an invalid approved to pending transition', async () => {
+    const savePayment = jest.fn();
+    const getPayment = jest.fn().mockResolvedValue({
+      paymentId: 'pi-123',
+      status: 'approved',
+      providerEventId: 'evt-approved'
+    });
+    const service = createPaymentStatusService({ savePayment, getPayment });
+
+    await expect(service.process({
+      provider: 'stripe',
+      providerEventId: 'evt-pending',
+      eventType: 'payment.pending',
+      data: { orderId: 'order-123', providerPaymentId: 'pi-123' }
+    })).rejects.toMatchObject({ code: 'INVALID_PAYMENT_TRANSITION' });
+    expect(savePayment).not.toHaveBeenCalled();
+  });
+
+  test('ignores a duplicated provider event', async () => {
+    const savePayment = jest.fn();
+    const getPayment = jest.fn().mockResolvedValue({
+      paymentId: 'pi-123',
+      status: 'approved',
+      providerEventId: 'evt-approved'
+    });
+    const service = createPaymentStatusService({ savePayment, getPayment });
+
+    await expect(service.process({
+      provider: 'stripe',
+      providerEventId: 'evt-approved',
+      eventType: 'payment.approved',
+      data: { orderId: 'order-123', providerPaymentId: 'pi-123' }
+    })).resolves.toEqual({ status: 'duplicate', providerEventId: 'evt-approved' });
+    expect(savePayment).not.toHaveBeenCalled();
+  });
 });

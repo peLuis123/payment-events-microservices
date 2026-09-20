@@ -1,6 +1,6 @@
 const express = require('express');
 
-function createCheckoutInternalRoute({ checkoutProcessor }) {
+function createCheckoutInternalRoute({ checkoutProcessor, savePendingPayment = async () => undefined }) {
   const router = express.Router();
 
   router.post('/internal/checkout/sessions', async (request, response, next) => {
@@ -10,9 +10,23 @@ function createCheckoutInternalRoute({ checkoutProcessor }) {
         return;
       }
 
-      const result = await checkoutProcessor.createCheckout({
+      const checkoutRequest = {
         ...request.body,
         idempotencyKey: request.get('Idempotency-Key')
+      };
+      const result = await checkoutProcessor.createCheckout(checkoutRequest);
+      const amount = checkoutRequest.items?.reduce(
+        (total, item) => total + item.unitAmount * item.quantity,
+        0
+      );
+      await savePendingPayment({
+        paymentId: result.paymentId || result.checkoutId,
+        orderId: checkoutRequest.externalReference,
+        provider: checkoutRequest.paymentProvider,
+        providerEventId: checkoutRequest.idempotencyKey,
+        status: 'pending',
+        amount,
+        currency: checkoutRequest.currency
       });
       response.status(201).json(result);
     } catch (error) {

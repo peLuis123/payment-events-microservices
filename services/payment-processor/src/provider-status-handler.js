@@ -29,7 +29,10 @@ function createProductionProviderStatusHandler({
     new DynamoDBClient({ region: process.env.AWS_REGION })
   );
   const repository = createPaymentRepository({ client: dynamodb, tableName });
-  const service = createPaymentStatusService({ savePayment: repository.save });
+  const service = createPaymentStatusService({
+    savePayment: repository.save,
+    getPayment: repository.get
+  });
   const paypalCheckout = paypal || createPayPalCheckout({
     clientId: process.env.PAYPAL_CLIENT_ID,
     clientSecret: process.env.PAYPAL_CLIENT_SECRET,
