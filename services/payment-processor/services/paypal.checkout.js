@@ -65,7 +65,31 @@ function createPayPalCheckout({
     return { captureId: result.id, status: result.status };
   }
 
-  return { createCheckout, captureOrder };
+  async function refundPayment({ paymentId, amount, currency, idempotencyKey }) {
+    if (!clientId || !clientSecret) throw new Error('Missing PayPal credentials');
+    const accessToken = await getAccessToken();
+    const body = {};
+    if (amount !== undefined) {
+      body.amount = {
+        value: (amount / 100).toFixed(2),
+        currency_code: currency
+      };
+    }
+    const response = await fetchImpl(`${apiBaseUrl}/v2/payments/captures/${paymentId}/refund`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': idempotencyKey
+      },
+      body: JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'PayPal refund failed');
+    return { refundId: result.id, status: result.status };
+  }
+
+  return { createCheckout, captureOrder, refundPayment };
 }
 
 module.exports = { createPayPalCheckout };

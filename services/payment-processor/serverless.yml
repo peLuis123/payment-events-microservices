@@ -10,6 +10,7 @@ provider:
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
     DYNAMODB_TABLE: ${env:DYNAMODB_TABLE}
     PAYMENTS_TABLE: ${env:PAYMENTS_TABLE, 'Payments'}
+    REFUNDS_TABLE: ${env:REFUNDS_TABLE, 'Refunds'}
     SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
     STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY, ''}
     PAYPAL_CLIENT_ID: ${env:PAYPAL_CLIENT_ID, ''}
@@ -34,6 +35,7 @@ provider:
           Resource:
             - ${env:DYNAMODB_TABLE_ARN}
             - ${env:PAYMENTS_TABLE_ARN}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:REFUNDS_TABLE, 'Refunds'}
         - Effect: Allow
           Action:
             - sns:Publish
