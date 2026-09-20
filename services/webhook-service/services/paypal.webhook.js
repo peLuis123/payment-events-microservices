@@ -57,15 +57,26 @@ function mapPayPalEvent(event) {
 
   const eventTypeName = event?.event_type || event?.eventType || event?.type;
   const types = {
+    'CHECKOUT.ORDER.APPROVED': 'payment.pending',
+    'CHECKOUT.ORDER.COMPLETED': 'payment.approved',
+    'CHECKOUT.ORDER.CANCELLED': 'payment.cancelled',
     'PAYMENT.CAPTURE.COMPLETED': 'payment.approved',
     'PAYMENT.CAPTURE.PENDING': 'payment.pending',
     'PAYMENT.CAPTURE.DENIED': 'payment.rejected',
+    'PAYMENT.CAPTURE.FAILED': 'payment.rejected',
     'PAYMENT.CAPTURE.REFUNDED': 'payment.refunded',
+    'PAYMENT.REFUND.COMPLETED': 'payment.refunded',
+    'PAYMENT.REFUND.DENIED': 'payment.refund.rejected',
+    'PAYMENT.REFUND.PENDING': 'payment.refund.pending',
     'CUSTOMER.DISPUTE.CREATED': 'payment.disputed',
-    'PAYMENT.SALE.COMPLETED': 'payment.approved'
+    'CUSTOMER.DISPUTE.UPDATED': 'payment.dispute.updated',
+    'CUSTOMER.DISPUTE.RESOLVED': 'payment.dispute.resolved',
+    'BILLING.SUBSCRIPTION.CANCELLED': 'payment.cancelled',
+    'PAYMENT.AUTHORIZATION.VOIDED': 'payment.cancelled',
+    'PAYMENT.SALE.COMPLETED': 'payment.approved',
   };
   const eventType = types[eventTypeName];
-  if (!eventType) throw new Error(`Unsupported PayPal event: ${eventTypeName}`);
+  if (!eventType) return null;
   return {
     eventId: event.id,
     provider: 'paypal',

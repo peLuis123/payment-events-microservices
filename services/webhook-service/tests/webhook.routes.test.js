@@ -54,6 +54,23 @@ describe('provider webhook routes', () => {
     expect(processWebhook).toHaveBeenCalledTimes(1);
   });
 
+  test('acknowledges an unhandled PayPal event without publishing it', async () => {
+    const processWebhook = jest.fn();
+    const app = createApp({
+      verifyPayPal: jest.fn().mockResolvedValue(true),
+      mapPayPalEvent: jest.fn().mockReturnValue(null),
+      processWebhook,
+      logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
+    });
+
+    const response = await request(app)
+      .post('/webhooks/paypal')
+      .send({ id: 'WH-ignored', event_type: 'PAYMENT.SOMETHING.NEW', resource: {} });
+
+    expect(response.status).toBe(202);
+    expect(processWebhook).not.toHaveBeenCalled();
+  });
+
   test('accepts a verified Stripe webhook using the raw request body', async () => {
     const processWebhook = jest.fn().mockResolvedValue(undefined);
     const app = createApp({

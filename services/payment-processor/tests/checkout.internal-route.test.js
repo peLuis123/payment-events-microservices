@@ -1,6 +1,7 @@
 const request = require('supertest');
 const express = require('express');
 const { createCheckoutInternalRoute } = require('../routes/checkout.internal.route');
+const { createCheckoutApp } = require('../src/checkout-app');
 
 describe('POST /internal/checkout/sessions', () => {
   test('returns a provider checkout session', async () => {
@@ -34,4 +35,5 @@ describe('POST /internal/checkout/sessions', () => {
       })
     );
   });
+
 });

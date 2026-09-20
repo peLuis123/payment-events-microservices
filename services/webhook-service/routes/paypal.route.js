@@ -36,7 +36,10 @@ function createPayPalRoute ({ verifyPayPal, mapPayPalEvent, processWebhook, logg
         authAlgo: request.get('PAYPAL-AUTH-ALGO'),
         body
       });
-      await processWebhook(mapPayPalEvent(body));
+      const mappedEvent = mapPayPalEvent(body);
+      if (mappedEvent) {
+        await processWebhook(mappedEvent);
+      }
       response.status(202).json({ received: true });
     } catch (error) {
       next(error);

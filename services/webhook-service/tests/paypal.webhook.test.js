@@ -65,4 +65,42 @@ describe('PayPal webhook adapter', () => {
       provider: 'paypal'
     });
   });
+
+  test('maps an approved checkout order to a pending payment', () => {
+    expect(mapPayPalEvent({
+      id: 'wh_order_approved',
+      event_type: 'CHECKOUT.ORDER.APPROVED',
+      resource: { id: 'paypal-order-123' }
+    })).toMatchObject({
+      eventType: 'payment.pending',
+      provider: 'paypal'
+    });
+  });
+
+  test.each([
+    ['CHECKOUT.ORDER.COMPLETED', 'payment.approved'],
+    ['CHECKOUT.ORDER.CANCELLED', 'payment.cancelled'],
+    ['PAYMENT.CAPTURE.FAILED', 'payment.rejected'],
+    ['PAYMENT.REFUND.COMPLETED', 'payment.refunded'],
+    ['PAYMENT.REFUND.DENIED', 'payment.refund.rejected'],
+    ['PAYMENT.REFUND.PENDING', 'payment.refund.pending'],
+    ['CUSTOMER.DISPUTE.UPDATED', 'payment.dispute.updated'],
+    ['CUSTOMER.DISPUTE.RESOLVED', 'payment.dispute.resolved'],
+    ['BILLING.SUBSCRIPTION.CANCELLED', 'payment.cancelled'],
+    ['PAYMENT.AUTHORIZATION.VOIDED', 'payment.cancelled']
+  ])('maps %s to %s', (providerEventType, internalEventType) => {
+    expect(mapPayPalEvent({
+      id: `wh_${providerEventType}`,
+      event_type: providerEventType,
+      resource: { id: 'provider-resource-123' }
+    }).eventType).toBe(internalEventType);
+  });
+
+  test('ignores valid but unhandled PayPal events', () => {
+    expect(mapPayPalEvent({
+      id: 'wh_ignored',
+      event_type: 'PAYMENT.SOMETHING.NEW',
+      resource: { id: 'provider-resource-123' }
+    })).toBeNull();
+  });
 });
