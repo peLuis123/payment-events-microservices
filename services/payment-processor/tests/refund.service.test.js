@@ -15,11 +15,13 @@ describe('createRefundService', () => {
     });
     const saveRefund = jest.fn().mockResolvedValue({ status: 'saved' });
     const savePayment = jest.fn().mockResolvedValue({ status: 'saved' });
+    const recordRefund = jest.fn().mockResolvedValue({ status: 'recorded' });
     const service = createRefundService({
       getPayment,
       savePayment,
       saveRefund,
       getRefund: jest.fn().mockResolvedValue(undefined),
+      recordRefund,
       providers: { paypal: { refundPayment } }
     });
 
@@ -42,6 +44,10 @@ describe('createRefundService', () => {
     expect(savePayment).toHaveBeenCalledWith(expect.objectContaining({
       paymentId: 'capture-123',
       status: 'refunded'
+    }));
+    expect(recordRefund).toHaveBeenCalledWith(expect.objectContaining({
+      refundId: 'refund-request-123',
+      merchantId: undefined
     }));
   });
 

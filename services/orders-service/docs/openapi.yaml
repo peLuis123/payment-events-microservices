@@ -147,6 +147,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /merchants/{merchantId}/balance:
+    get:
+      summary: Get merchant balance
+      operationId: getMerchantBalance
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current available merchant balance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceResponse"
+        "401":
+          description: Merchant identity does not match the path.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Payment not found.
           content:
@@ -302,3 +326,18 @@ components:
           type: string
         status:
           type: string
+    BalanceResponse:
+      type: object
+      required: [merchantId, available, pending, currency]
+      properties:
+        merchantId:
+          type: string
+        available:
+          type: integer
+          minimum: 0
+        pending:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"

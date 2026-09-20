@@ -21,8 +21,10 @@ function createCheckoutInternalRoute({ checkoutProcessor, savePendingPayment = a
       );
       await savePendingPayment({
         paymentId: result.paymentId || result.checkoutId,
+        providerTransactionId: result.providerTransactionId,
         orderId: checkoutRequest.externalReference,
         provider: checkoutRequest.paymentProvider,
+        merchantId: checkoutRequest.merchantId,
         providerEventId: checkoutRequest.idempotencyKey,
         status: 'pending',
         amount,

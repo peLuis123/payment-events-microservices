@@ -50,7 +50,7 @@ describe('PayPal webhook adapter', () => {
       eventType: 'payment.approved',
       data: {
         orderId: '8U481631H66031715',
-        providerPaymentId: '42311647XV020574X'
+        providerPaymentId: '8U481631H66031715'
       }
     });
   });

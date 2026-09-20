@@ -39,4 +39,20 @@ describe('provider status handler', () => {
     expect(processStatus.mock.invocationCallOrder[0])
       .toBeLessThan(processApproval.mock.invocationCallOrder[0]);
   });
+
+  test('processes accounting after the provider status event', async () => {
+    const processStatus = jest.fn().mockResolvedValue({ status: 'saved' });
+    const processAccounting = jest.fn().mockResolvedValue({ status: 'recorded' });
+    const handler = createProviderStatusHandler({ processStatus, processAccounting });
+    const message = {
+      provider: 'stripe',
+      providerEventId: 'evt-approved-123',
+      eventType: 'payment.approved',
+      data: { providerPaymentId: 'pi-123' }
+    };
+
+    await handler({ Records: [{ Sns: { Message: JSON.stringify(message) } }] });
+
+    expect(processAccounting).toHaveBeenCalledWith(message);
+  });
 });

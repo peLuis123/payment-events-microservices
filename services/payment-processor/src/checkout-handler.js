@@ -7,6 +7,8 @@ const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const { createPaymentRepository } = require('../repositories/payment.repository');
 const { createRefundRepository } = require('../repositories/refund.repository');
 const { createRefundService } = require('../services/refund.service');
+const { createAccountingRepository } = require('../repositories/accounting.repository');
+const { createLedgerService } = require('../services/ledger.service');
 
 /**
  * Creates a Lambda handler for synchronous checkout sessions.
@@ -30,6 +32,14 @@ function createProductionCheckoutHandler({ stripe, paypal, client, savePendingPa
     client: dynamodb,
     tableName: process.env.REFUNDS_TABLE || 'Refunds'
   });
+  const accountingRepository = createAccountingRepository({
+    client: dynamodb,
+    ledgerTableName: process.env.LEDGER_TABLE || 'LedgerEntries',
+    balanceTableName: process.env.BALANCES_TABLE || 'Balances'
+  });
+  const ledgerService = createLedgerService({
+    recordTransaction: accountingRepository.recordTransaction
+  });
   const providers = {
     stripe: stripe || createStripeCheckout({ secretKey: process.env.STRIPE_SECRET_KEY }),
     paypal: paypal || createPayPalCheckout({
@@ -45,13 +55,15 @@ function createProductionCheckoutHandler({ stripe, paypal, client, savePendingPa
     savePayment: paymentRepository.save,
     getRefund: refundRepository.get,
     saveRefund: refundRepository.save,
+    recordRefund: ledgerService.recordRefund,
     providers
   });
   const app = createCheckoutApp({
     providers,
     savePendingPayment: savePendingPayment || paymentRepository.save,
     getPayment: paymentRepository.get,
-    refund: refundService.refund
+    refund: refundService.refund,
+    getBalance: accountingRepository.getBalance
   });
   return createCheckoutHandler({ app });
 }

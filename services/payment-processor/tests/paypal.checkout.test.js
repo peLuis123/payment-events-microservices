@@ -27,7 +27,8 @@ describe('createPayPalCheckout', () => {
     await expect(checkout.createCheckout(request)).resolves.toEqual({
       checkoutId: 'paypal-order-123',
       checkoutUrl: 'https://www.sandbox.paypal.com/checkoutnow?token=paypal-order-123',
-      paymentId: 'paypal-order-123'
+      paymentId: 'paypal-order-123',
+      providerTransactionId: 'paypal-order-123'
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(fetchImpl.mock.calls[1][1].headers['PayPal-Request-Id']).toBe('checkout-request-123');

@@ -21,13 +21,15 @@ describe('createStripeCheckout', () => {
       cancelUrl: 'https://frontend.test/cancel',
       externalReference: 'cart-123',
       idempotencyKey: 'checkout-request-123',
-      paymentId: 'payment-123'
+      paymentId: 'payment-123',
+      merchantId: 'merchant-123'
     };
 
     await expect(checkout.createCheckout(request)).resolves.toEqual({
       checkoutId: 'cs_test_123',
       checkoutUrl: 'https://checkout.stripe.com/cs_test_123',
-      paymentId: 'pi_test_123'
+      paymentId: 'payment-123',
+      providerTransactionId: 'pi_test_123'
     });
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api.stripe.com/v1/checkout/sessions',

@@ -2,6 +2,7 @@ const express = require('express');
 const { createCheckoutInternalRoute } = require('../routes/checkout.internal.route');
 const { createPaymentInternalRoute } = require('../routes/payment.internal.route');
 const { createRefundInternalRoute } = require('../routes/refund.internal.route');
+const { createBalanceInternalRoute } = require('../routes/balance.internal.route');
 const { createCheckoutProcessor } = require('../services/checkout.processor');
 
 /**
@@ -10,7 +11,7 @@ const { createCheckoutProcessor } = require('../services/checkout.processor');
  * @param {{ providers: object }} dependencies - Stripe and PayPal adapters.
  * @returns {import('express').Express} Checkout application.
  */
-function createCheckoutApp({ providers, savePendingPayment, getPayment, refund }) {
+function createCheckoutApp({ providers, savePendingPayment, getPayment, refund, getBalance }) {
   const app = express();
   app.use((request, response, next) => {
     const bodyBuffer = Buffer.isBuffer(request.body)
@@ -38,6 +39,7 @@ function createCheckoutApp({ providers, savePendingPayment, getPayment, refund }
   }));
   app.use(createPaymentInternalRoute({ getPayment }));
   app.use(createRefundInternalRoute({ refund }));
+  app.use(createBalanceInternalRoute({ getBalance }));
   app.use((error, request, response, next) => {
     if (response.headersSent) {
       next(error);

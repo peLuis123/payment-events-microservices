@@ -65,6 +65,7 @@ describe('POST /internal/checkout/sessions', () => {
       paymentId: 'paypal-order-123',
       orderId: 'order-123',
       provider: 'paypal',
+      merchantId: 'merchant-123',
       providerEventId: 'checkout-paypal-123',
       status: 'pending',
       amount: 5799,
