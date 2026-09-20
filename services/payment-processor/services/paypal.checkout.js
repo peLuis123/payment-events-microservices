@@ -48,7 +48,24 @@ function createPayPalCheckout({
     return { checkoutId: result.id, checkoutUrl: approval?.href, paymentId: result.id };
   }
 
-  return { createCheckout };
+  async function captureOrder(orderId, idempotencyKey) {
+    if (!clientId || !clientSecret) throw new Error('Missing PayPal credentials');
+    const accessToken = await getAccessToken();
+    const response = await fetchImpl(`${apiBaseUrl}/v2/checkout/orders/${orderId}/capture`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': idempotencyKey
+      },
+      body: '{}'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'PayPal capture failed');
+    return { captureId: result.id, status: result.status };
+  }
+
+  return { createCheckout, captureOrder };
 }
 
 module.exports = { createPayPalCheckout };
