@@ -53,7 +53,11 @@ function createProductionHandler({
       fetchImpl
     })
   });
-  const app = createApp({ orderService, checkoutService, logger });
+  const paymentClient = createPaymentProcessorClient({
+    baseUrl: config.PAYMENT_PROCESSOR_CHECKOUT_URL,
+    fetchImpl
+  });
+  const app = createApp({ orderService, checkoutService, paymentClient, logger });
 
   return createHandler({ app });
 }
