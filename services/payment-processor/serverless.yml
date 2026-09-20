@@ -11,6 +11,8 @@ provider:
     DYNAMODB_TABLE: ${env:DYNAMODB_TABLE}
     PAYMENTS_TABLE: ${env:PAYMENTS_TABLE, 'Payments'}
     REFUNDS_TABLE: ${env:REFUNDS_TABLE, 'Refunds'}
+    LEDGER_TABLE: ${env:LEDGER_TABLE, 'LedgerEntries'}
+    BALANCES_TABLE: ${env:BALANCES_TABLE, 'Balances'}
     SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
     STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY, ''}
     PAYPAL_CLIENT_ID: ${env:PAYPAL_CLIENT_ID, ''}
@@ -32,10 +34,13 @@ provider:
             - dynamodb:GetItem
             - dynamodb:PutItem
             - dynamodb:UpdateItem
+            - dynamodb:TransactWriteItems
           Resource:
             - ${env:DYNAMODB_TABLE_ARN}
             - ${env:PAYMENTS_TABLE_ARN}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:REFUNDS_TABLE, 'Refunds'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:LEDGER_TABLE, 'LedgerEntries'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:BALANCES_TABLE, 'Balances'}
         - Effect: Allow
           Action:
             - sns:Publish

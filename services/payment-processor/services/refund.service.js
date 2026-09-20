@@ -3,6 +3,7 @@ function createRefundService({
   savePayment = async () => undefined,
   getRefund = async () => undefined,
   saveRefund = async () => undefined,
+  recordRefund = async () => undefined,
   providers
 }) {
   function createError(message, code) {
@@ -32,7 +33,7 @@ function createRefundService({
     }
 
     const providerResult = await provider.refundPayment({
-      paymentId: payment.paymentId,
+      paymentId: payment.providerTransactionId || payment.paymentId,
       amount: amount === payment.amount ? undefined : amount,
       currency: request.currency || payment.currency,
       idempotencyKey: request.idempotencyKey
@@ -48,6 +49,12 @@ function createRefundService({
       idempotencyKey: request.idempotencyKey
     };
     await saveRefund(refundRecord);
+    if (['succeeded', 'COMPLETED'].includes(providerResult.status)) {
+      await recordRefund({
+        ...refundRecord,
+        merchantId: payment.merchantId
+      });
+    }
 
     if (amount === payment.amount && ['succeeded', 'COMPLETED'].includes(providerResult.status)) {
       await savePayment({

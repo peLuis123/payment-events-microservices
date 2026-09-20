@@ -4,8 +4,16 @@ const { createPaymentRepository } = require('../repositories/payment.repository'
 const { createPaymentStatusService } = require('../services/paymentStatus.service');
 const { createProviderApprovalHandler } = require('../services/paypal.approval.service');
 const { createPayPalCheckout } = require('../services/paypal.checkout');
+const { createAccountingRepository } = require('../repositories/accounting.repository');
+const { createLedgerService } = require('../services/ledger.service');
+const { createPaymentAccountingService } = require('../services/payment-accounting.service');
 
-function createProviderStatusHandler({ processStatus, processApproval = async () => undefined, logger }) {
+function createProviderStatusHandler({
+  processStatus,
+  processApproval = async () => undefined,
+  processAccounting = async () => undefined,
+  logger
+}) {
   return async function handleProviderStatus(event) {
     for (const record of event.Records || []) {
       const message = JSON.parse(record.Sns.Message);
@@ -14,6 +22,7 @@ function createProviderStatusHandler({ processStatus, processApproval = async ()
       }
       await processStatus(message);
       await processApproval(message);
+      await processAccounting(message);
     }
 
     return { batchItemFailures: [] };
@@ -33,6 +42,19 @@ function createProductionProviderStatusHandler({
     savePayment: repository.save,
     getPayment: repository.get
   });
+  const accountingRepository = createAccountingRepository({
+    client: dynamodb,
+    ledgerTableName: process.env.LEDGER_TABLE || 'LedgerEntries',
+    balanceTableName: process.env.BALANCES_TABLE || 'Balances'
+  });
+  const ledgerService = createLedgerService({
+    recordTransaction: accountingRepository.recordTransaction
+  });
+  const accountingService = createPaymentAccountingService({
+    getPayment: repository.get,
+    recordPaymentApproved: ledgerService.recordPaymentApproved,
+    recordRefund: ledgerService.recordRefund
+  });
   const paypalCheckout = paypal || createPayPalCheckout({
     clientId: process.env.PAYPAL_CLIENT_ID,
     clientSecret: process.env.PAYPAL_CLIENT_SECRET,
@@ -45,7 +67,8 @@ function createProductionProviderStatusHandler({
   });
   return createProviderStatusHandler({
     processStatus: service.process,
-    processApproval: approvalService
+    processApproval: approvalService,
+    processAccounting: accountingService.process
   });
 }
 
