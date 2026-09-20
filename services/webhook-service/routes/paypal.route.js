@@ -31,6 +31,9 @@ function createPayPalRoute ({ verifyPayPal, mapPayPalEvent, processWebhook, logg
       await verifyPayPal({
         transmissionId: request.get('PAYPAL-TRANSMISSION-ID'),
         transmissionSignature: request.get('PAYPAL-TRANSMISSION-SIG'),
+        transmissionTime: request.get('PAYPAL-TRANSMISSION-TIME'),
+        certUrl: request.get('PAYPAL-CERT-URL'),
+        authAlgo: request.get('PAYPAL-AUTH-ALGO'),
         body
       });
       await processWebhook(mapPayPalEvent(body));
