@@ -55,6 +55,7 @@ function createProductionCheckoutHandler({ stripe, paypal, client, savePendingPa
     savePayment: paymentRepository.save,
     getRefund: refundRepository.get,
     saveRefund: refundRepository.save,
+    recordPaymentApproved: ledgerService.recordPaymentApproved,
     recordRefund: ledgerService.recordRefund,
     providers
   });

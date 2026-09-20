@@ -9,7 +9,7 @@ function createPaymentRepository({ client, tableName }) {
         updatedAt: new Date().toISOString(),
         createdAt: payment.createdAt || new Date().toISOString()
       },
-      ConditionExpression: 'attribute_not_exists(paymentId) OR providerEventId = :providerEventId',
+      ConditionExpression: 'attribute_not_exists(paymentId) OR providerEventId <> :providerEventId',
       ExpressionAttributeValues: {
         ':providerEventId': payment.providerEventId
       }

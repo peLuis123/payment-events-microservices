@@ -20,7 +20,8 @@ describe('createPaymentRepository', () => {
     expect(client.send).toHaveBeenCalledWith(expect.any(PutCommand));
     expect(client.send.mock.calls[0][0].input).toMatchObject({
       TableName: 'Payments',
-      Item: expect.objectContaining(payment)
+      Item: expect.objectContaining(payment),
+      ConditionExpression: 'attribute_not_exists(paymentId) OR providerEventId <> :providerEventId'
     });
   });
 

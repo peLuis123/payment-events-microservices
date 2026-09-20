@@ -5,6 +5,7 @@ describe('createRefundService', () => {
     const getPayment = jest.fn().mockResolvedValue({
       paymentId: 'capture-123',
       provider: 'paypal',
+      merchantId: 'merchant-123',
       status: 'approved',
       amount: 5799,
       currency: 'USD'
@@ -16,12 +17,14 @@ describe('createRefundService', () => {
     const saveRefund = jest.fn().mockResolvedValue({ status: 'saved' });
     const savePayment = jest.fn().mockResolvedValue({ status: 'saved' });
     const recordRefund = jest.fn().mockResolvedValue({ status: 'recorded' });
+    const recordPaymentApproved = jest.fn().mockResolvedValue({ status: 'recorded' });
     const service = createRefundService({
       getPayment,
       savePayment,
       saveRefund,
       getRefund: jest.fn().mockResolvedValue(undefined),
       recordRefund,
+      recordPaymentApproved,
       providers: { paypal: { refundPayment } }
     });
 
@@ -47,7 +50,11 @@ describe('createRefundService', () => {
     }));
     expect(recordRefund).toHaveBeenCalledWith(expect.objectContaining({
       refundId: 'refund-request-123',
-      merchantId: undefined
+      merchantId: 'merchant-123'
+    }));
+    expect(recordPaymentApproved).toHaveBeenCalledWith(expect.objectContaining({
+      paymentId: 'capture-123',
+      merchantId: 'merchant-123'
     }));
   });
 
@@ -74,9 +81,15 @@ describe('createRefundService', () => {
   test('returns an existing refund for the same idempotency key', async () => {
     const existing = { refundId: 'refund-existing', status: 'COMPLETED' };
     const refundPayment = jest.fn();
+    const getPayment = jest.fn().mockResolvedValue({
+      paymentId: 'capture-123',
+      merchantId: 'merchant-123'
+    });
+    const recordRefund = jest.fn().mockResolvedValue({ status: 'recorded' });
     const service = createRefundService({
-      getPayment: jest.fn(),
+      getPayment,
       getRefund: jest.fn().mockResolvedValue(existing),
+      recordRefund,
       providers: { paypal: { refundPayment } }
     });
 
@@ -87,5 +100,9 @@ describe('createRefundService', () => {
       idempotencyKey: 'refund-existing'
     })).resolves.toEqual({ status: 'duplicate', refund: existing });
     expect(refundPayment).not.toHaveBeenCalled();
+    expect(recordRefund).toHaveBeenCalledWith(expect.objectContaining({
+      refundId: 'refund-existing',
+      merchantId: 'merchant-123'
+    }));
   });
 });

@@ -2,6 +2,14 @@ const { GetCommand, TransactWriteCommand } = require('@aws-sdk/lib-dynamodb');
 
 function createAccountingRepository({ client, ledgerTableName, balanceTableName, now = () => new Date().toISOString() }) {
   async function recordTransaction(transaction) {
+    const existingEntry = await client.send(new GetCommand({
+      TableName: ledgerTableName,
+      Key: { entryId: `${transaction.transactionId}:0` }
+    }));
+    if (existingEntry.Item) {
+      return { status: 'duplicate', transactionId: transaction.transactionId };
+    }
+
     const timestamp = now();
     const ledgerItems = transaction.entries.map((entry, index) => ({
       Put: {
@@ -25,14 +33,15 @@ function createAccountingRepository({ client, ledgerTableName, balanceTableName,
     ledgerItems.push({
       Update: {
         TableName: balanceTableName,
-        Key: { merchantId: transaction.merchantId },
+        Key: { accountId: transaction.merchantId },
         UpdateExpression: 'SET #currency = if_not_exists(#currency, :currency), updatedAt = :updatedAt ADD available :delta',
-        ConditionExpression: 'attribute_not_exists(available) OR available + :delta >= :zero',
+        ConditionExpression: ':delta >= :zero OR (attribute_exists(available) AND available >= :debit)',
         ExpressionAttributeNames: { '#currency': 'currency' },
         ExpressionAttributeValues: {
           ':currency': transaction.currency,
           ':updatedAt': timestamp,
           ':delta': transaction.balanceDelta,
+          ':debit': Math.abs(transaction.balanceDelta),
           ':zero': 0
         }
       }
@@ -45,7 +54,7 @@ function createAccountingRepository({ client, ledgerTableName, balanceTableName,
   async function getBalance(merchantId) {
     const result = await client.send(new GetCommand({
       TableName: balanceTableName,
-      Key: { merchantId }
+      Key: { accountId: merchantId }
     }));
     return result.Item;
   }

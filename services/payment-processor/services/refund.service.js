@@ -3,6 +3,7 @@ function createRefundService({
   savePayment = async () => undefined,
   getRefund = async () => undefined,
   saveRefund = async () => undefined,
+  recordPaymentApproved = async () => undefined,
   recordRefund = async () => undefined,
   providers
 }) {
@@ -14,7 +15,17 @@ function createRefundService({
 
   async function refund(request) {
     const existingRefund = await getRefund(request.idempotencyKey);
-    if (existingRefund) return { status: 'duplicate', refund: existingRefund };
+    if (existingRefund) {
+      const payment = await getPayment(existingRefund.paymentId);
+      if (payment?.merchantId && recordRefund) {
+        await recordPaymentApproved(payment);
+        await recordRefund({
+          ...existingRefund,
+          merchantId: payment.merchantId
+        });
+      }
+      return { status: 'duplicate', refund: existingRefund };
+    }
 
     const payment = await getPayment(request.paymentId);
     if (!payment) throw createError('Payment not found', 'PAYMENT_NOT_FOUND');
@@ -48,13 +59,14 @@ function createRefundService({
       status: providerResult.status,
       idempotencyKey: request.idempotencyKey
     };
-    await saveRefund(refundRecord);
     if (['succeeded', 'COMPLETED'].includes(providerResult.status)) {
+      await recordPaymentApproved(payment);
       await recordRefund({
         ...refundRecord,
         merchantId: payment.merchantId
       });
     }
+    await saveRefund(refundRecord);
 
     if (amount === payment.amount && ['succeeded', 'COMPLETED'].includes(providerResult.status)) {
       await savePayment({
