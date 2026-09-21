@@ -7,6 +7,87 @@ servers:
   - url: /
     description: Current Orders Service host
 paths:
+  /carts/{cartId}/items:
+    post:
+      summary: Add a product to a cart
+      operationId: addCartItem
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity]
+              properties:
+                productId: { type: string }
+                quantity: { type: integer, minimum: 1 }
+      responses:
+        "201": { description: Cart item added. }
+  /carts/{cartId}:
+    get:
+      summary: Get a cart
+      operationId: getCart
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Cart returned. }
+  /commercial-orders:
+    post:
+      summary: Create a commercial order from a cart
+      operationId: createCommercialOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cartId]
+              properties:
+                cartId: { type: string }
+      responses:
+        "201": { description: Commercial order created. }
+  /commercial-orders/{orderId}/inventory-reservations:
+    post:
+      summary: Reserve inventory for an order
+      operationId: reserveInventory
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201": { description: Inventory reserved. }
+  /commercial-orders/{orderId}/checkout:
+    post:
+      summary: Create checkout for a commercial order
+      operationId: createCommercialCheckout
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentProvider, successUrl, cancelUrl, idempotencyKey]
+              properties:
+                paymentProvider: { type: string, enum: [stripe, paypal] }
+                successUrl: { type: string, format: uri }
+                cancelUrl: { type: string, format: uri }
+                idempotencyKey: { type: string }
+      responses:
+        "201": { description: Checkout session created. }
   /merchants:
     post:
       summary: Create a merchant
