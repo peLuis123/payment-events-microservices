@@ -21,6 +21,11 @@ provider:
     CATEGORIES_TABLE: ${env:CATEGORIES_TABLE, 'Categories'}
     MERCHANTS_TABLE: ${env:MERCHANTS_TABLE, 'Merchants'}
     MERCHANT_USERS_TABLE: ${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
+    CARTS_TABLE: ${env:CARTS_TABLE, 'Carts'}
+    CART_ITEMS_TABLE: ${env:CART_ITEMS_TABLE, 'CartItems'}
+    COMMERCIAL_ORDERS_TABLE: ${env:COMMERCIAL_ORDERS_TABLE, 'CommercialOrders'}
+    ORDER_ITEMS_TABLE: ${env:ORDER_ITEMS_TABLE, 'OrderItems'}
+    INVENTORY_TABLE: ${env:INVENTORY_TABLE, 'Inventory'}
   iam:
     role:
       statements:
@@ -43,6 +48,11 @@ provider:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CATEGORIES_TABLE, 'Categories'}/index/MerchantIndex
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANTS_TABLE, 'Merchants'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CARTS_TABLE, 'Carts'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CART_ITEMS_TABLE, 'CartItems'}/index/CartIndex
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:COMMERCIAL_ORDERS_TABLE, 'CommercialOrders'}/index/MerchantIndex
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:ORDER_ITEMS_TABLE, 'OrderItems'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:INVENTORY_TABLE, 'Inventory'}
 
 resources:
   Resources:
@@ -143,6 +153,88 @@ resources:
             KeyType: HASH
           - AttributeName: userId
             KeyType: RANGE
+    CartsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:CARTS_TABLE, 'Carts'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: cartId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: cartId
+            KeyType: HASH
+    CartItemsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:CART_ITEMS_TABLE, 'CartItems'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: cartItemId
+            AttributeType: S
+          - AttributeName: cartId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: cartItemId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CartIndex
+            KeySchema:
+              - AttributeName: cartId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    CommercialOrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:COMMERCIAL_ORDERS_TABLE, 'CommercialOrders'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: orderId
+            AttributeType: S
+          - AttributeName: merchantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: orderId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: MerchantIndex
+            KeySchema:
+              - AttributeName: merchantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    OrderItemsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:ORDER_ITEMS_TABLE, 'OrderItems'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: lineItemId
+            AttributeType: S
+          - AttributeName: orderId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: lineItemId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: OrderIndex
+            KeySchema:
+              - AttributeName: orderId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    InventoryTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:INVENTORY_TABLE, 'Inventory'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
 
 functions:
   app:

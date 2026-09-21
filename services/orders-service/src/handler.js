@@ -18,6 +18,10 @@ const { createMerchantService } = require('../services/merchant.service');
 const { createMerchantRepository } = require('../repositories/merchant.repository');
 const { createSessionAuth } = require('../middlewares/session-auth');
 const { createAuthService } = require('../services/auth.service');
+const { createCommerceRepository } = require('../repositories/commerce.repository');
+const { createCartService } = require('../services/cart.service');
+const { createCommercialOrderService } = require('../services/commercial-order.service');
+const { createInventoryService } = require('../services/inventory.service');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -88,6 +92,19 @@ function createProductionHandler({
     merchantUsersTable: environment.MERCHANT_USERS_TABLE || 'MerchantUsers'
   });
   const merchantService = createMerchantService(merchantRepository);
+  const commerceRepository = createCommerceRepository({
+    client: dynamodb,
+    tables: {
+      carts: environment.CARTS_TABLE || 'Carts',
+      cartItems: environment.CART_ITEMS_TABLE || 'CartItems',
+      orders: environment.COMMERCIAL_ORDERS_TABLE || 'CommercialOrders',
+      orderItems: environment.ORDER_ITEMS_TABLE || 'OrderItems',
+      inventory: environment.INVENTORY_TABLE || 'Inventory'
+    }
+  });
+  const cartService = createCartService({ getProduct: catalogRepository.getProduct, saveCart: commerceRepository.saveCart, saveItem: commerceRepository.saveCartItem });
+  const commercialOrderService = createCommercialOrderService({ getCartItems: commerceRepository.getCartItems, getProduct: catalogRepository.getProduct, saveOrder: commerceRepository.saveOrder, saveItems: commerceRepository.saveOrderItems, getOrder: commerceRepository.getOrder, getOrderItems: commerceRepository.getOrderItems, checkoutService });
+  const inventoryService = createInventoryService({ reserve: commerceRepository.reserveInventory });
   const app = createApp({
     orderService,
     checkoutService,
@@ -104,6 +121,10 @@ function createProductionHandler({
     catalogService,
     catalogRepository,
     merchantService,
+    cartService,
+    commercialOrderService,
+    inventoryService,
+    commerceRepository,
     rateLimiter: createRateLimiter({
       windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),
       max: Number(environment.RATE_LIMIT_MAX || 60)

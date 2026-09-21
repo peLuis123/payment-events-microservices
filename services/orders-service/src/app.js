@@ -12,6 +12,7 @@ const { createRateLimiter } = require('../middlewares/rate-limiter');
 const { createAuthRoute } = require('../routes/auth.route');
 const { createCatalogRoute } = require('../routes/catalog.route');
 const { createMerchantRoute } = require('../routes/merchant.route');
+const { createCommerceRoute } = require('../routes/commerce.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -30,7 +31,11 @@ function createApp({
   authService,
   catalogService,
   catalogRepository,
-  merchantService
+  merchantService,
+  cartService,
+  commercialOrderService,
+  inventoryService,
+  commerceRepository
 }) {
   const app = express();
 
@@ -69,6 +74,14 @@ function createApp({
     }));
   }
   if (merchantService) app.use(createMerchantRoute({ merchantService }));
+  if (cartService && commercialOrderService && inventoryService && commerceRepository) {
+    app.use(createCommerceRoute({
+      cartService,
+      orderService: commercialOrderService,
+      inventoryService,
+      repository: commerceRepository
+    }));
+  }
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
 
