@@ -4,7 +4,7 @@ useDotenv: true
 provider:
   name: aws
   runtime: nodejs22.x
-  logRetentionInDays: 7
+  logRetentionInDays: 1
   region: ${opt:region, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
   environment:
