@@ -7,6 +7,9 @@ function createAuthService({
   saveUser = async (user) => user,
   getUserByEmail = async () => undefined,
   saveRefreshToken = async () => undefined,
+  getRefreshToken = async () => undefined,
+  deleteRefreshToken = async () => undefined,
+  getUser = async () => undefined,
   createUserId = () => crypto.randomUUID(),
   signToken = (payload) => signTokenValue(payload, process.env.AUTH_TOKEN_SECRET || 'development-only-secret'),
   verifyPassword: verifyPasswordDependency
@@ -61,7 +64,38 @@ function createAuthService({
     return { accessToken, refreshToken, user: publicUser(user) };
   }
 
-  return { register, login, hashPassword, verifyPassword };
+  async function me(userId) {
+    const user = await getUser(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.code = 'USER_NOT_FOUND';
+      throw error;
+    }
+    return publicUser(user);
+  }
+
+  async function refresh(refreshToken) {
+    const payload = verifyTokenValue(refreshToken, process.env.AUTH_TOKEN_SECRET || 'development-only-secret');
+    const stored = await getRefreshToken(hashToken(refreshToken || ''));
+    if (!payload || payload.type !== 'refresh' || !stored) {
+      const error = new Error('Invalid refresh token');
+      error.code = 'INVALID_REFRESH_TOKEN';
+      throw error;
+    }
+    const user = await getUser(payload.userId);
+    if (!user) throw new Error('User not found');
+    await deleteRefreshToken(hashToken(refreshToken));
+    const accessToken = signToken({ type: 'access', userId: user.userId, role: user.role });
+    const nextRefreshToken = signToken({ type: 'refresh', userId: user.userId, tokenId: crypto.randomUUID() });
+    await saveRefreshToken({ userId: user.userId, tokenHash: hashToken(nextRefreshToken), createdAt: new Date().toISOString() });
+    return { accessToken, refreshToken: nextRefreshToken, user: publicUser(user) };
+  }
+
+  async function logout(refreshToken) {
+    if (refreshToken) await deleteRefreshToken(hashToken(refreshToken));
+  }
+
+  return { register, login, refresh, logout, me, hashPassword, verifyPassword };
 }
 
 function signTokenValue(payload, secret) {
@@ -74,8 +108,20 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function verifyTokenValue(token, secret) {
+  if (!token) return undefined;
+  const [encoded, signature] = token.split('.');
+  if (!encoded || !signature) return undefined;
+  const expected = crypto.createHmac('sha256', secret).update(encoded).digest('base64url');
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return undefined;
+  try {
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    return payload.exp > Date.now() ? payload : undefined;
+  } catch (error) { return undefined; }
+}
+
 function publicUser(user) {
   return { userId: user.userId, email: user.email, displayName: user.displayName, role: user.role, status: user.status };
 }
 
-module.exports = { createAuthService, hashToken, signTokenValue };
+module.exports = { createAuthService, hashToken, signTokenValue, verifyTokenValue };

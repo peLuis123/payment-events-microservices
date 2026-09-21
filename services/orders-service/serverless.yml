@@ -17,6 +17,7 @@ provider:
     USERS_TABLE: ${env:USERS_TABLE, 'Users'}
     REFRESH_TOKENS_TABLE: ${env:REFRESH_TOKENS_TABLE, 'RefreshTokens'}
     AUTH_TOKEN_SECRET: ${env:AUTH_TOKEN_SECRET, 'development-only-secret'}
+    FRONTEND_ORIGIN: ${env:FRONTEND_ORIGIN, 'http://localhost:5000'}
     PRODUCTS_TABLE: ${env:PRODUCTS_TABLE, 'Products'}
     CATEGORIES_TABLE: ${env:CATEGORIES_TABLE, 'Categories'}
     MERCHANTS_TABLE: ${env:MERCHANTS_TABLE, 'Merchants'}
@@ -240,4 +241,19 @@ functions:
   app:
     handler: src/handler.handler
     url:
-      cors: true
+      cors:
+        allowedOrigins:
+          - ${env:FRONTEND_ORIGIN, 'http://localhost:5173'}
+        allowedHeaders:
+          - Content-Type
+          - Cookie
+          - X-Api-Key
+          - X-Merchant-Id
+          - Idempotency-Key
+        allowedMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        allowCredentials: true

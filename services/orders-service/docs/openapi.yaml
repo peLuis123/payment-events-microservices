@@ -236,6 +236,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /auth/me:
+    get:
+      summary: Get the authenticated user
+      operationId: getCurrentUser
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Missing or expired access cookie.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/refresh:
+    post:
+      summary: Rotate the refresh cookie
+      operationId: refreshSession
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Session refreshed and cookies rotated.
+        "401":
+          description: Invalid refresh cookie.
+  /auth/logout:
+    post:
+      summary: End the current session
+      operationId: logout
+      responses:
+        "204":
+          description: Session ended and cookies cleared.
   /orders:
     post:
       summary: Accept a payment order
@@ -433,6 +470,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
   parameters:
     AuthCookie:
       name: Cookie

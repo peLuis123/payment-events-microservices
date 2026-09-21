@@ -54,7 +54,7 @@ function createApp({
   });
   app.use(express.json());
   app.use(rateLimiter);
-  if (authService) app.use(createAuthRoute({ authService }));
+  if (authService) app.use(createAuthRoute({ authService, sessionAuth }));
   if (sessionAuth) app.use(sessionAuth);
   if (merchantAuth) app.use(merchantAuth);
   app.get('/', (request, response) => response.redirect('/docs/'));
