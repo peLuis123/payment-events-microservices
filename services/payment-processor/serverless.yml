@@ -13,6 +13,7 @@ provider:
     REFUNDS_TABLE: ${env:REFUNDS_TABLE, 'Refunds'}
     LEDGER_TABLE: ${env:LEDGER_TABLE, 'LedgerEntries'}
     BALANCES_TABLE: ${env:BALANCES_TABLE, 'Balances'}
+    PAYOUTS_TABLE: ${env:PAYOUTS_TABLE, 'Payouts'}
     SNS_TOPIC_ARN: ${env:SNS_TOPIC_ARN}
     STRIPE_SECRET_KEY: ${env:STRIPE_SECRET_KEY, ''}
     PAYPAL_CLIENT_ID: ${env:PAYPAL_CLIENT_ID, ''}
@@ -41,6 +42,7 @@ provider:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:REFUNDS_TABLE, 'Refunds'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:LEDGER_TABLE, 'LedgerEntries'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:BALANCES_TABLE, 'Balances'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:PAYOUTS_TABLE, 'Payouts'}
         - Effect: Allow
           Action:
             - sns:Publish
@@ -80,3 +82,14 @@ resources:
       Properties:
         QueueName: payment-processor-provider-status-dlq-${sls:stage}
         MessageRetentionPeriod: 1209600
+    PayoutsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:PAYOUTS_TABLE, 'Payouts'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: payoutId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: payoutId
+            KeyType: HASH

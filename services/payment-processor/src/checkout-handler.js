@@ -9,6 +9,10 @@ const { createRefundRepository } = require('../repositories/refund.repository');
 const { createRefundService } = require('../services/refund.service');
 const { createAccountingRepository } = require('../repositories/accounting.repository');
 const { createLedgerService } = require('../services/ledger.service');
+const { createBalanceRepository } = require('../repositories/balance.repository');
+const { createPayoutRepository } = require('../repositories/payout.repository');
+const { createPayoutService } = require('../services/payout.service');
+const { createSettlementService } = require('../services/settlement.service');
 
 /**
  * Creates a Lambda handler for synchronous checkout sessions.
@@ -37,6 +41,14 @@ function createProductionCheckoutHandler({ stripe, paypal, client, savePendingPa
     ledgerTableName: process.env.LEDGER_TABLE || 'LedgerEntries',
     balanceTableName: process.env.BALANCES_TABLE || 'Balances'
   });
+  const balanceRepository = createBalanceRepository({
+    client: dynamodb,
+    tableName: process.env.BALANCES_TABLE || 'Balances'
+  });
+  const payoutRepository = createPayoutRepository({
+    client: dynamodb,
+    tableName: process.env.PAYOUTS_TABLE || 'Payouts'
+  });
   const ledgerService = createLedgerService({
     recordTransaction: accountingRepository.recordTransaction
   });
@@ -59,12 +71,26 @@ function createProductionCheckoutHandler({ stripe, paypal, client, savePendingPa
     recordRefund: ledgerService.recordRefund,
     providers
   });
+  const payoutService = createPayoutService({
+    getBalance: balanceRepository.get,
+    getPayout: payoutRepository.get,
+    savePayout: payoutRepository.save,
+    updateBalance: balanceRepository.update,
+    recordPayout: ledgerService.recordPayout,
+    providers
+  });
+  const settlementService = createSettlementService({
+    updateBalance: balanceRepository.update,
+    recordSettlement: ledgerService.recordSettlement
+  });
   const app = createCheckoutApp({
     providers,
     savePendingPayment: savePendingPayment || paymentRepository.save,
     getPayment: paymentRepository.get,
     refund: refundService.refund,
-    getBalance: accountingRepository.getBalance
+    getBalance: accountingRepository.getBalance,
+    createPayout: payoutService.create,
+    settle: settlementService.settle
   });
   return createCheckoutHandler({ app });
 }

@@ -3,6 +3,8 @@ const { createCheckoutInternalRoute } = require('../routes/checkout.internal.rou
 const { createPaymentInternalRoute } = require('../routes/payment.internal.route');
 const { createRefundInternalRoute } = require('../routes/refund.internal.route');
 const { createBalanceInternalRoute } = require('../routes/balance.internal.route');
+const { createPayoutInternalRoute } = require('../routes/payout.internal.route');
+const { createSettlementInternalRoute } = require('../routes/settlement.internal.route');
 const { createCheckoutProcessor } = require('../services/checkout.processor');
 
 /**
@@ -11,7 +13,7 @@ const { createCheckoutProcessor } = require('../services/checkout.processor');
  * @param {{ providers: object }} dependencies - Stripe and PayPal adapters.
  * @returns {import('express').Express} Checkout application.
  */
-function createCheckoutApp({ providers, savePendingPayment, getPayment, refund, getBalance }) {
+function createCheckoutApp({ providers, savePendingPayment, getPayment, refund, getBalance, createPayout, settle }) {
   const app = express();
   app.use((request, response, next) => {
     const bodyBuffer = Buffer.isBuffer(request.body)
@@ -40,6 +42,8 @@ function createCheckoutApp({ providers, savePendingPayment, getPayment, refund, 
   app.use(createPaymentInternalRoute({ getPayment }));
   app.use(createRefundInternalRoute({ refund }));
   app.use(createBalanceInternalRoute({ getBalance }));
+  app.use(createPayoutInternalRoute({ create: createPayout }));
+  app.use(createSettlementInternalRoute({ settle }));
   app.use((error, request, response, next) => {
     if (response.headersSent) {
       next(error);
