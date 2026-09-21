@@ -4,6 +4,8 @@ function createLedgerService({ recordTransaction }) {
     await recordTransaction({
       transactionId,
       paymentId: payment.paymentId,
+      userId: payment.userId,
+      commercialOrderId: payment.commercialOrderId,
       merchantId: payment.merchantId,
       amount: payment.amount,
       currency: payment.currency,
@@ -22,6 +24,8 @@ function createLedgerService({ recordTransaction }) {
     await recordTransaction({
       transactionId,
       paymentId: refund.paymentId,
+          userId: refund.userId,
+          commercialOrderId: refund.commercialOrderId,
       merchantId: refund.merchantId,
       amount: refund.amount,
       currency: refund.currency,
@@ -40,6 +44,8 @@ function createLedgerService({ recordTransaction }) {
     await recordTransaction({
       transactionId,
       paymentId: settlement.paymentId,
+      userId: settlement.userId,
+      commercialOrderId: settlement.commercialOrderId,
       merchantId: settlement.merchantId,
       amount: settlement.amount,
       currency: settlement.currency,
@@ -58,6 +64,8 @@ function createLedgerService({ recordTransaction }) {
     await recordTransaction({
       transactionId,
       merchantId: payout.merchantId,
+      userId: payout.userId,
+      commercialOrderId: payout.commercialOrderId,
       amount: payout.amount,
       currency: payout.currency,
       type: 'payout',

@@ -53,6 +53,8 @@ function createRefundService({
       refundId: request.idempotencyKey,
       providerRefundId: providerResult.refundId,
       paymentId: payment.paymentId,
+      userId: payment.userId,
+      commercialOrderId: payment.commercialOrderId,
       provider: payment.provider,
       amount,
       currency: request.currency || payment.currency,
