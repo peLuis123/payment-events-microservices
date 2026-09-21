@@ -19,9 +19,8 @@ function createCheckoutInternalRoute({ checkoutProcessor, savePendingPayment = a
         (total, item) => total + item.unitAmount * item.quantity,
         0
       );
-      await savePendingPayment({
+      const pendingPayment = {
         paymentId: result.paymentId || result.checkoutId,
-        providerTransactionId: result.providerTransactionId,
         orderId: checkoutRequest.externalReference,
         provider: checkoutRequest.paymentProvider,
         merchantId: checkoutRequest.merchantId,
@@ -29,7 +28,11 @@ function createCheckoutInternalRoute({ checkoutProcessor, savePendingPayment = a
         status: 'pending',
         amount,
         currency: checkoutRequest.currency
-      });
+      };
+      if (result.providerTransactionId) pendingPayment.providerTransactionId = result.providerTransactionId;
+      if (checkoutRequest.userId) pendingPayment.userId = checkoutRequest.userId;
+      if (checkoutRequest.commercialOrderId) pendingPayment.commercialOrderId = checkoutRequest.commercialOrderId;
+      await savePendingPayment(pendingPayment);
       response.status(201).json(result);
     } catch (error) {
       next(error);
