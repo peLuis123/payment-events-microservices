@@ -9,6 +9,9 @@ const { createRefundRoute } = require('../routes/refund.route');
 const { createBalanceRoute } = require('../routes/balance.route');
 const { createPayoutRoute } = require('../routes/payout.route');
 const { createRateLimiter } = require('../middlewares/rate-limiter');
+const { createAuthRoute } = require('../routes/auth.route');
+const { createCatalogRoute } = require('../routes/catalog.route');
+const { createMerchantRoute } = require('../routes/merchant.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -22,7 +25,12 @@ function createApp({
   paymentClient = { getPayment: async () => ({}) },
   logger = createLogger({ service: 'orders-service' }),
   rateLimiter = createRateLimiter(),
-  merchantAuth
+  merchantAuth,
+  sessionAuth,
+  authService,
+  catalogService,
+  catalogRepository,
+  merchantService
 }) {
   const app = express();
 
@@ -41,6 +49,8 @@ function createApp({
   });
   app.use(express.json());
   app.use(rateLimiter);
+  if (authService) app.use(createAuthRoute({ authService }));
+  if (sessionAuth) app.use(sessionAuth);
   if (merchantAuth) app.use(merchantAuth);
   app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
@@ -49,6 +59,16 @@ function createApp({
   app.use(createRefundRoute({ paymentClient }));
   app.use(createBalanceRoute({ paymentClient }));
   app.use(createPayoutRoute({ paymentClient }));
+  if (catalogService) {
+    app.use(createCatalogRoute({
+      catalogService,
+      catalogRepository: catalogRepository || {
+        listProducts: async () => [],
+        listCategories: async () => []
+      }
+    }));
+  }
+  if (merchantService) app.use(createMerchantRoute({ merchantService }));
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
 

@@ -7,6 +7,154 @@ servers:
   - url: /
     description: Current Orders Service host
 paths:
+  /merchants:
+    post:
+      summary: Create a merchant
+      operationId: createMerchant
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - $ref: "#/components/parameters/AuthCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, defaultCurrency]
+              properties:
+                name:
+                  type: string
+                defaultCurrency:
+                  type: string
+                  pattern: "^[A-Z]{3}$"
+      responses:
+        "201":
+          description: Merchant created.
+        "403":
+          description: Admin role required.
+  /products:
+    get:
+      summary: List merchant products
+      operationId: listProducts
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+      responses:
+        "200":
+          description: Product list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductResponse"
+    post:
+      summary: Create a product
+      operationId: createProduct
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - $ref: "#/components/parameters/AuthCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "403":
+          description: Admin role required.
+  /categories:
+    get:
+      summary: List merchant categories
+      operationId: listCategories
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+      responses:
+        "200":
+          description: Category list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryResponse"
+    post:
+      summary: Create a category
+      operationId: createCategory
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - name: X-User-Role
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRequest"
+      responses:
+        "201":
+          description: Category created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+        "403":
+          description: Admin role required.
+  /auth/register:
+    post:
+      summary: Register a buyer account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Invalid registration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/login:
+    post:
+      summary: Log in a user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful. HttpOnly cookies are set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /orders:
     post:
       summary: Accept a payment order
@@ -205,6 +353,13 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
+    AuthCookie:
+      name: Cookie
+      in: header
+      required: true
+      schema:
+        type: string
+      description: HttpOnly access_token cookie issued by /auth/login.
     MerchantId:
       name: X-Merchant-Id
       in: header
@@ -218,6 +373,110 @@ components:
       schema:
         type: string
   schemas:
+    CreateProductRequest:
+      type: object
+      additionalProperties: false
+      required: [name, price, currency]
+      properties:
+        name:
+          type: string
+        sku:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+        price:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+        imageUrl:
+          type: string
+          format: uri
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        stock:
+          type: integer
+          minimum: 0
+    ProductResponse:
+      allOf:
+        - $ref: "#/components/schemas/CreateProductRequest"
+        - type: object
+          required: [productId, merchantId, status]
+          properties:
+            productId:
+              type: string
+            merchantId:
+              type: string
+            status:
+              type: string
+    CreateCategoryRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+    CategoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/CreateCategoryRequest"
+        - type: object
+          required: [categoryId, merchantId, status]
+          properties:
+            categoryId:
+              type: string
+            merchantId:
+              type: string
+            status:
+              type: string
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        displayName:
+          type: string
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    UserResponse:
+      type: object
+      required: [userId, email, role, status]
+      properties:
+        userId:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [buyer, admin]
+        status:
+          type: string
     CreateOrderRequest:
       type: object
       additionalProperties: false

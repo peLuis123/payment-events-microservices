@@ -9,6 +9,15 @@ const { createCheckoutService } = require('../services/checkout.service');
 const { createPaymentProcessorClient } = require('../clients/payment-processor.client');
 const { createMerchantAuth, parseMerchantKeys } = require('../middlewares/merchant-auth');
 const { createRateLimiter } = require('../middlewares/rate-limiter');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
+const { createUserRepository } = require('../repositories/user.repository');
+const { createCatalogRepository } = require('../repositories/catalog.repository');
+const { createCatalogService } = require('../services/catalog.service');
+const { createMerchantService } = require('../services/merchant.service');
+const { createMerchantRepository } = require('../repositories/merchant.repository');
+const { createSessionAuth } = require('../middlewares/session-auth');
+const { createAuthService } = require('../services/auth.service');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -60,6 +69,25 @@ function createProductionHandler({
     fetchImpl
   });
   const merchantKeys = parseMerchantKeys(environment.MERCHANT_API_KEYS);
+  const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: config.AWS_REGION }));
+  const userRepository = createUserRepository({
+    client: dynamodb,
+    tableName: environment.USERS_TABLE || 'Users',
+    refreshTableName: environment.REFRESH_TOKENS_TABLE || 'RefreshTokens'
+  });
+  const authService = createAuthService(userRepository);
+  const catalogRepository = createCatalogRepository({
+    client: dynamodb,
+    productsTable: environment.PRODUCTS_TABLE || 'Products',
+    categoriesTable: environment.CATEGORIES_TABLE || 'Categories'
+  });
+  const catalogService = createCatalogService(catalogRepository);
+  const merchantRepository = createMerchantRepository({
+    client: dynamodb,
+    merchantsTable: environment.MERCHANTS_TABLE || 'Merchants',
+    merchantUsersTable: environment.MERCHANT_USERS_TABLE || 'MerchantUsers'
+  });
+  const merchantService = createMerchantService(merchantRepository);
   const app = createApp({
     orderService,
     checkoutService,
@@ -68,6 +96,14 @@ function createProductionHandler({
     merchantAuth: Object.keys(merchantKeys).length
       ? createMerchantAuth({ keys: merchantKeys })
       : undefined,
+    sessionAuth: createSessionAuth({
+      secret: environment.AUTH_TOKEN_SECRET,
+      optional: true
+    }),
+    authService,
+    catalogService,
+    catalogRepository,
+    merchantService,
     rateLimiter: createRateLimiter({
       windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),
       max: Number(environment.RATE_LIMIT_MAX || 60)

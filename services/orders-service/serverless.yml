@@ -14,6 +14,13 @@ provider:
     MERCHANT_API_KEYS: ${env:MERCHANT_API_KEYS, ''}
     RATE_LIMIT_WINDOW_MS: ${env:RATE_LIMIT_WINDOW_MS, '60000'}
     RATE_LIMIT_MAX: ${env:RATE_LIMIT_MAX, '60'}
+    USERS_TABLE: ${env:USERS_TABLE, 'Users'}
+    REFRESH_TOKENS_TABLE: ${env:REFRESH_TOKENS_TABLE, 'RefreshTokens'}
+    AUTH_TOKEN_SECRET: ${env:AUTH_TOKEN_SECRET, 'development-only-secret'}
+    PRODUCTS_TABLE: ${env:PRODUCTS_TABLE, 'Products'}
+    CATEGORIES_TABLE: ${env:CATEGORIES_TABLE, 'Categories'}
+    MERCHANTS_TABLE: ${env:MERCHANTS_TABLE, 'Merchants'}
+    MERCHANT_USERS_TABLE: ${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
   iam:
     role:
       statements:
@@ -21,6 +28,121 @@ provider:
           Action:
             - sqs:SendMessage
           Resource: ${env:SQS_QUEUE_ARN}
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:USERS_TABLE, 'Users'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:USERS_TABLE, 'Users'}/index/EmailIndex
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:REFRESH_TOKENS_TABLE, 'RefreshTokens'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:PRODUCTS_TABLE, 'Products'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:PRODUCTS_TABLE, 'Products'}/index/MerchantIndex
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CATEGORIES_TABLE, 'Categories'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CATEGORIES_TABLE, 'Categories'}/index/MerchantIndex
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANTS_TABLE, 'Merchants'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:USERS_TABLE, 'Users'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    RefreshTokensTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:REFRESH_TOKENS_TABLE, 'RefreshTokens'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: tokenHash
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tokenHash
+            KeyType: HASH
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:PRODUCTS_TABLE, 'Products'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+          - AttributeName: merchantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: MerchantIndex
+            KeySchema:
+              - AttributeName: merchantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    CategoriesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:CATEGORIES_TABLE, 'Categories'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: categoryId
+            AttributeType: S
+          - AttributeName: merchantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: categoryId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: MerchantIndex
+            KeySchema:
+              - AttributeName: merchantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+    MerchantsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:MERCHANTS_TABLE, 'Merchants'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: merchantId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: merchantId
+            KeyType: HASH
+    MerchantUsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: merchantId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: merchantId
+            KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
 
 functions:
   app:
