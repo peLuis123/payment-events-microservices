@@ -5,7 +5,7 @@ const { checkoutSessionSchema } = require('../validators/checkout.validator');
 function createCheckoutController({ checkoutService }) {
   return async function createCheckoutSession(request, response, next) {
     try {
-      const merchantId = request.get('X-Merchant-Id');
+      const merchantId = request.merchantId || request.get('X-Merchant-Id');
       if (!merchantId) {
         next(new AppError('Merchant authentication required', 401, 'UNAUTHORIZED'));
         return;

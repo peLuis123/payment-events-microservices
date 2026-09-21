@@ -3,7 +3,7 @@ const { AppError } = require('../middlewares/error.middleware');
 function createRefundController({ paymentClient }) {
   return async function createRefund(request, response, next) {
     try {
-      if (!request.get('X-Merchant-Id')) {
+      if (!request.merchantId && !request.get('X-Merchant-Id')) {
         next(new AppError('Merchant authentication required', 401, 'UNAUTHORIZED'));
         return;
       }

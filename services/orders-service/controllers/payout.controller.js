@@ -3,7 +3,7 @@ const { AppError } = require('../middlewares/error.middleware');
 function createPayoutController({ paymentClient }) {
   return async function createPayout(request, response, next) {
     try {
-      const merchantId = request.get('X-Merchant-Id');
+      const merchantId = request.merchantId || request.get('X-Merchant-Id');
       const idempotencyKey = request.get('Idempotency-Key');
       if (!merchantId) {
         next(new AppError('Merchant authentication required', 401, 'UNAUTHORIZED'));
