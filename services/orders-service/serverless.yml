@@ -4,12 +4,16 @@ useDotenv: true
 provider:
   name: aws
   runtime: nodejs22.x
+  logRetentionInDays: 7
   region: ${opt:region, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
   environment:
     NODE_ENV: ${env:NODE_ENV, 'production'}
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
     PAYMENT_PROCESSOR_CHECKOUT_URL: ${env:PAYMENT_PROCESSOR_CHECKOUT_URL}
+    MERCHANT_API_KEYS: ${env:MERCHANT_API_KEYS, ''}
+    RATE_LIMIT_WINDOW_MS: ${env:RATE_LIMIT_WINDOW_MS, '60000'}
+    RATE_LIMIT_MAX: ${env:RATE_LIMIT_MAX, '60'}
   iam:
     role:
       statements:

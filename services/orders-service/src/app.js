@@ -8,6 +8,7 @@ const { createPaymentRoute } = require('../routes/payment.route');
 const { createRefundRoute } = require('../routes/refund.route');
 const { createBalanceRoute } = require('../routes/balance.route');
 const { createPayoutRoute } = require('../routes/payout.route');
+const { createRateLimiter } = require('../middlewares/rate-limiter');
 
 /**
  * Creates the Express application for the orders service.
@@ -15,7 +16,14 @@ const { createPayoutRoute } = require('../routes/payout.route');
  * @param {{ orderService: { createOrder: Function }, logger?: object }} dependencies - Application dependencies.
  * @returns {import('express').Express} Configured Express application.
  */
-function createApp({ orderService, checkoutService = { createSession: async () => ({}) }, paymentClient = { getPayment: async () => ({}) }, logger = createLogger({ service: 'orders-service' }) }) {
+function createApp({
+  orderService,
+  checkoutService = { createSession: async () => ({}) },
+  paymentClient = { getPayment: async () => ({}) },
+  logger = createLogger({ service: 'orders-service' }),
+  rateLimiter = createRateLimiter(),
+  merchantAuth
+}) {
   const app = express();
 
   app.use((request, response, next) => {
@@ -32,6 +40,8 @@ function createApp({ orderService, checkoutService = { createSession: async () =
     }
   });
   app.use(express.json());
+  app.use(rateLimiter);
+  if (merchantAuth) app.use(merchantAuth);
   app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
   app.use(createCheckoutRoute({ checkoutService }));

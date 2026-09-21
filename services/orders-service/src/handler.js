@@ -7,6 +7,8 @@ const { createSqsRepository } = require('../repositories/sqs.repository');
 const { loadEnvironment } = require('../validators/env.validator');
 const { createCheckoutService } = require('../services/checkout.service');
 const { createPaymentProcessorClient } = require('../clients/payment-processor.client');
+const { createMerchantAuth, parseMerchantKeys } = require('../middlewares/merchant-auth');
+const { createRateLimiter } = require('../middlewares/rate-limiter');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -57,7 +59,20 @@ function createProductionHandler({
     baseUrl: config.PAYMENT_PROCESSOR_CHECKOUT_URL,
     fetchImpl
   });
-  const app = createApp({ orderService, checkoutService, paymentClient, logger });
+  const merchantKeys = parseMerchantKeys(environment.MERCHANT_API_KEYS);
+  const app = createApp({
+    orderService,
+    checkoutService,
+    paymentClient,
+    logger,
+    merchantAuth: Object.keys(merchantKeys).length
+      ? createMerchantAuth({ keys: merchantKeys })
+      : undefined,
+    rateLimiter: createRateLimiter({
+      windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),
+      max: Number(environment.RATE_LIMIT_MAX || 60)
+    })
+  });
 
   return createHandler({ app });
 }
