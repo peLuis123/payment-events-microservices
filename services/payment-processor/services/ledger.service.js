@@ -35,7 +35,42 @@ function createLedgerService({ recordTransaction }) {
     return { status: 'recorded', transactionId };
   }
 
-  return { recordPaymentApproved, recordRefund };
+  async function recordSettlement(settlement) {
+    const transactionId = `settlement:${settlement.settlementId}`;
+    await recordTransaction({
+      transactionId,
+      paymentId: settlement.paymentId,
+      merchantId: settlement.merchantId,
+      amount: settlement.amount,
+      currency: settlement.currency,
+      type: 'settlement',
+      entries: [
+        { accountId: `merchant:${settlement.merchantId}:pending`, direction: 'debit' },
+        { accountId: `merchant:${settlement.merchantId}:available`, direction: 'credit' }
+      ],
+      balanceDelta: 0
+    });
+    return { status: 'recorded', transactionId };
+  }
+
+  async function recordPayout(payout) {
+    const transactionId = `payout:${payout.payoutId}`;
+    await recordTransaction({
+      transactionId,
+      merchantId: payout.merchantId,
+      amount: payout.amount,
+      currency: payout.currency,
+      type: 'payout',
+      entries: [
+        { accountId: `merchant:${payout.merchantId}:available`, direction: 'debit' },
+        { accountId: 'platform:payouts', direction: 'credit' }
+      ],
+      balanceDelta: -payout.amount
+    });
+    return { status: 'recorded', transactionId };
+  }
+
+  return { recordPaymentApproved, recordRefund, recordSettlement, recordPayout };
 }
 
 module.exports = { createLedgerService };
