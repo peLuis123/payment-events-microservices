@@ -78,6 +78,13 @@ function mapPayPalEvent(event) {
   const eventType = types[eventTypeName];
   if (!eventType) return null;
   const relatedOrderId = event.resource.supplementary_data?.related_ids?.order_id;
+  let ecommerceContext = {};
+  try {
+    const customId = event.resource.custom_id;
+    if (customId?.startsWith('{')) ecommerceContext = JSON.parse(customId);
+  } catch (error) {
+    ecommerceContext = {};
+  }
   const providerPaymentId = eventTypeName.startsWith('PAYMENT.CAPTURE')
     ? relatedOrderId || event.resource.parent_payment || event.resource.id
     : event.resource.id || event.resource.dispute_id;
@@ -90,6 +97,8 @@ function mapPayPalEvent(event) {
     data: {
       providerEventType: eventTypeName,
       orderId: event.resource.supplementary_data?.related_ids?.order_id,
+      userId: ecommerceContext.userId,
+      commercialOrderId: ecommerceContext.commercialOrderId || relatedOrderId,
       providerPaymentId,
       providerTransactionId: event.resource.id,
       parentPaymentId: event.resource.parent_payment,

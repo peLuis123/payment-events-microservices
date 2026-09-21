@@ -33,6 +33,10 @@ function createPayPalCheckout({
         intent: 'CAPTURE',
         purchase_units: [{
           reference_id: request.externalReference,
+          custom_id: JSON.stringify({
+            userId: request.userId,
+            commercialOrderId: request.commercialOrderId || request.externalReference
+          }),
           amount: { currency_code: request.currency, value: (total / 100).toFixed(2) }
         }],
         application_context: {

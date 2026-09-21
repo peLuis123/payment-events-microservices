@@ -10,6 +10,10 @@ function createStripeCheckout({ secretKey, fetchImpl = fetch, apiBaseUrl = 'http
     body.set('metadata[paymentId]', request.paymentId);
     body.set('payment_intent_data[metadata][paymentId]', request.paymentId);
     body.set('payment_intent_data[metadata][merchantId]', request.merchantId);
+    body.set('metadata[userId]', request.userId);
+    body.set('metadata[commercialOrderId]', request.commercialOrderId || request.externalReference);
+    body.set('payment_intent_data[metadata][userId]', request.userId);
+    body.set('payment_intent_data[metadata][commercialOrderId]', request.commercialOrderId || request.externalReference);
 
     request.items.forEach((item, index) => {
       body.set(`line_items[${index}][quantity]`, String(item.quantity));

@@ -33,6 +33,8 @@ function mapStripeEvent(event) {
       providerPaymentId: event.data.object.metadata?.paymentId || event.data.object.id,
       providerTransactionId: event.data.object.id,
       merchantId: event.data.object.metadata?.merchantId,
+      userId: event.data.object.metadata?.userId,
+      commercialOrderId: event.data.object.metadata?.commercialOrderId,
       amount: event.data.object.amount_received || event.data.object.amount,
       currency: event.data.object.currency?.toUpperCase()
     }
