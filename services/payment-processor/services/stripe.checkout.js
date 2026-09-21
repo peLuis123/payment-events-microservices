@@ -56,7 +56,28 @@ function createStripeCheckout({ secretKey, fetchImpl = fetch, apiBaseUrl = 'http
     return { refundId: result.id, status: result.status };
   }
 
-  return { createCheckout, refundPayment };
+  async function createPayout({ amount, currency, merchantAccountId, idempotencyKey }) {
+    if (!secretKey) throw new Error('Missing Stripe secret key');
+    const body = new URLSearchParams({
+      amount: String(amount),
+      currency: currency.toLowerCase(),
+      destination: merchantAccountId
+    });
+    const response = await fetchImpl(`${apiBaseUrl}/v1/transfers`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Idempotency-Key': idempotencyKey
+      },
+      body: body.toString()
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Stripe payout failed');
+    return { providerPayoutId: result.id, status: 'paid' };
+  }
+
+  return { createCheckout, refundPayment, createPayout };
 }
 
 module.exports = { createStripeCheckout };

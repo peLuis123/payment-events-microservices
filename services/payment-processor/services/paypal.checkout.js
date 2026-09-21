@@ -94,7 +94,39 @@ function createPayPalCheckout({
     return { refundId: result.id, status: result.status };
   }
 
-  return { createCheckout, captureOrder, refundPayment };
+  async function createPayout({ amount, currency, merchantAccountId, idempotencyKey }) {
+    if (!clientId || !clientSecret) throw new Error('Missing PayPal credentials');
+    const accessToken = await getAccessToken();
+    const response = await fetchImpl(`${apiBaseUrl}/v1/payments/payouts`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': idempotencyKey
+      },
+      body: JSON.stringify({
+        sender_batch_header: {
+          sender_batch_id: idempotencyKey,
+          email_subject: 'Payment platform payout'
+        },
+        items: [{
+          recipient_type: 'EMAIL',
+          amount: { value: (amount / 100).toFixed(2), currency },
+          receiver: merchantAccountId,
+          note: `Payout ${idempotencyKey}`,
+          sender_item_id: idempotencyKey
+        }]
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'PayPal payout failed');
+    return {
+      providerPayoutId: result.batch_header?.payout_batch_id,
+      status: result.batch_header?.batch_status?.toLowerCase() || 'pending'
+    };
+  }
+
+  return { createCheckout, captureOrder, refundPayment, createPayout };
 }
 
 module.exports = { createPayPalCheckout };
