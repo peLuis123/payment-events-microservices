@@ -38,7 +38,18 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200": { description: Cart returned. }
+        "200":
+          description: Cart and its items returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartResponse"
+        "404":
+          description: Cart not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /commercial-orders:
     post:
       summary: Create a commercial order from a cart
@@ -496,6 +507,26 @@ components:
       schema:
         type: string
   schemas:
+    CartResponse:
+      type: object
+      required: [cartId, userId, merchantId, currency, status, items]
+      properties:
+        cartId: { type: string }
+        userId: { type: string }
+        merchantId: { type: string }
+        currency: { type: string, pattern: "^[A-Z]{3}$" }
+        status: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [cartItemId, productId, quantity, unitAmount, totalAmount]
+            properties:
+              cartItemId: { type: string }
+              productId: { type: string }
+              quantity: { type: integer }
+              unitAmount: { type: integer }
+              totalAmount: { type: integer }
     CreateProductRequest:
       type: object
       additionalProperties: false

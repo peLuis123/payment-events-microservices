@@ -9,7 +9,14 @@ function createCommerceController({ cartService, orderService, inventoryService,
   }
   return {
     addCartItem: async (request, response, next) => { try { const ids = identity(request, next); if (!ids) return; response.status(201).json(await cartService.addItem({ ...request.body, ...ids, cartId: request.params.cartId })); } catch (error) { next(error); } },
-    getCart: async (request, response, next) => { try { response.json(await repository.getCart(request.params.cartId)); } catch (error) { next(error); } },
+    getCart: async (request, response, next) => {
+      try {
+        const cart = await repository.getCart(request.params.cartId);
+        if (!cart) { response.status(404).json({ error: 'Cart not found', code: 'CART_NOT_FOUND' }); return; }
+        const items = await repository.getCartItems(request.params.cartId);
+        response.json({ ...cart, items });
+      } catch (error) { next(error); }
+    },
     createOrder: async (request, response, next) => { try { const ids = identity(request, next); if (!ids) return; response.status(201).json(await orderService.createFromCart({ cartId: request.body.cartId, ...ids })); } catch (error) { next(error); } },
     createCheckout: async (request, response, next) => { try { response.status(201).json(await orderService.createCheckout({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } },
     reserve: async (request, response, next) => { try { response.status(201).json(await inventoryService.reserve({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } }

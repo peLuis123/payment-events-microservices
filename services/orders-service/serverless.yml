@@ -255,5 +255,4 @@ functions:
           - POST
           - PUT
           - DELETE
-          - OPTIONS
         allowCredentials: true
