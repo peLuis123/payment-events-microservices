@@ -30,6 +30,8 @@ function createCommercialOrderService({ getCartItems, getProduct, saveOrder, sav
     const items = await getOrderItems(order.orderId);
     const session = await checkoutService.createSession({
       merchantId: order.merchantId,
+      userId: order.userId,
+      commercialOrderId: order.orderId,
       items: items.map((item) => ({ productId: item.productId, quantity: item.quantity, unitAmount: item.unitAmount })),
       currency: order.currency,
       paymentProvider: request.paymentProvider,
