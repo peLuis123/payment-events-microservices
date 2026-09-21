@@ -171,6 +171,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /payouts:
+    post:
+      summary: Create a merchant payout
+      operationId: createPayout
+      parameters:
+        - $ref: "#/components/parameters/MerchantId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePayoutRequest"
+      responses:
+        "201":
+          description: Payout created or submitted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayoutResponse"
+        "400":
+          description: Invalid payout request or insufficient balance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Payment not found.
           content:
@@ -341,3 +367,31 @@ components:
         currency:
           type: string
           pattern: "^[A-Z]{3}$"
+    CreatePayoutRequest:
+      type: object
+      additionalProperties: false
+      required: [payoutId, provider, merchantAccountId, amount, currency]
+      properties:
+        payoutId:
+          type: string
+        provider:
+          type: string
+          enum: [stripe, paypal]
+        merchantAccountId:
+          type: string
+        amount:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+    PayoutResponse:
+      type: object
+      required: [payoutId, providerPayoutId, status]
+      properties:
+        payoutId:
+          type: string
+        providerPayoutId:
+          type: string
+        status:
+          type: string

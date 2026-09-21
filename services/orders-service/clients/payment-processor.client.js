@@ -80,7 +80,28 @@ function createPaymentProcessorClient({ baseUrl, fetchImpl = fetch }) {
     return result;
   }
 
-  return { createCheckout, getPayment, createRefund, getBalance };
+  async function createPayout(request) {
+    const response = await fetchImpl(`${baseUrl.replace(/\/$/, '')}/internal/payouts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Service': 'orders-service',
+        'Idempotency-Key': request.idempotencyKey
+      },
+      body: JSON.stringify(request)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const error = new Error(result.error || 'Payment processor payout failed');
+      error.statusCode = response.status >= 400 && response.status < 500 ? response.status : 502;
+      error.code = result.code || 'PAYOUT_FAILED';
+      error.isOperational = true;
+      throw error;
+    }
+    return result;
+  }
+
+  return { createCheckout, getPayment, createRefund, getBalance, createPayout };
 }
 
 module.exports = { createPaymentProcessorClient };

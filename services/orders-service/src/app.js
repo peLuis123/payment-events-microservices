@@ -7,6 +7,7 @@ const { createCheckoutRoute } = require('../routes/checkout.route');
 const { createPaymentRoute } = require('../routes/payment.route');
 const { createRefundRoute } = require('../routes/refund.route');
 const { createBalanceRoute } = require('../routes/balance.route');
+const { createPayoutRoute } = require('../routes/payout.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -37,6 +38,7 @@ function createApp({ orderService, checkoutService = { createSession: async () =
   app.use(createPaymentRoute({ paymentClient }));
   app.use(createRefundRoute({ paymentClient }));
   app.use(createBalanceRoute({ paymentClient }));
+  app.use(createPayoutRoute({ paymentClient }));
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
 
