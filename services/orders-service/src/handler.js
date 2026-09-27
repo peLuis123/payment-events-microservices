@@ -22,6 +22,7 @@ const { createCommerceRepository } = require('../repositories/commerce.repositor
 const { createCartService } = require('../services/cart.service');
 const { createCommercialOrderService } = require('../services/commercial-order.service');
 const { createInventoryService } = require('../services/inventory.service');
+const { createCartCreationService } = require('../services/cart.creation.service');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -105,6 +106,7 @@ function createProductionHandler({
   const cartService = createCartService({ getProduct: catalogRepository.getProduct, saveCart: commerceRepository.saveCart, saveItem: commerceRepository.saveCartItem });
   const commercialOrderService = createCommercialOrderService({ getCartItems: commerceRepository.getCartItems, getProduct: catalogRepository.getProduct, saveOrder: commerceRepository.saveOrder, saveItems: commerceRepository.saveOrderItems, getOrder: commerceRepository.getOrder, getOrderItems: commerceRepository.getOrderItems, checkoutService });
   const inventoryService = createInventoryService({ reserve: commerceRepository.reserveInventory });
+  const cartCreationService = createCartCreationService({ saveCart: commerceRepository.saveCart });
   const app = createApp({
     orderService,
     checkoutService,
@@ -125,6 +127,7 @@ function createProductionHandler({
     commercialOrderService,
     inventoryService,
     commerceRepository,
+    cartCreationService,
     rateLimiter: createRateLimiter({
       windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),
       max: Number(environment.RATE_LIMIT_MAX || 60)

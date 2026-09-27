@@ -28,6 +28,21 @@ paths:
                 quantity: { type: integer, minimum: 1 }
       responses:
         "201": { description: Cart item added. }
+  /carts:
+    post:
+      summary: Create an empty cart
+      operationId: createCart
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merchantId: { type: string, example: merchant-123 }
+                currency: { type: string, pattern: "^[A-Z]{3}$", example: USD }
+      responses:
+        "201": { description: Cart created. }
   /carts/{cartId}:
     get:
       summary: Get a cart
@@ -51,6 +66,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
   /commercial-orders:
+    get:
+      summary: List current user commercial orders
+      operationId: listCommercialOrders
+      security:
+        - cookieAuth: []
+      responses:
+        "200": { description: Commercial order history. }
     post:
       summary: Create a commercial order from a cart
       operationId: createCommercialOrder
@@ -94,8 +116,11 @@ paths:
               required: [paymentProvider, successUrl, cancelUrl, idempotencyKey]
               properties:
                 paymentProvider: { type: string, enum: [stripe, paypal] }
-                successUrl: { type: string, format: uri }
                 cancelUrl: { type: string, format: uri }
+                successUrl:
+                  type: string
+                  format: uri
+                  description: Use /checkout/success?paymentId={paymentId}; backend replaces the placeholder.
                 idempotencyKey: { type: string }
       responses:
         "201": { description: Checkout session created. }

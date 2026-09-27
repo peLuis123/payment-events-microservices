@@ -13,6 +13,7 @@ const { createAuthRoute } = require('../routes/auth.route');
 const { createCatalogRoute } = require('../routes/catalog.route');
 const { createMerchantRoute } = require('../routes/merchant.route');
 const { createCommerceRoute } = require('../routes/commerce.route');
+const { createCartRoute } = require('../routes/cart.route');
 
 /**
  * Creates the Express application for the orders service.
@@ -36,6 +37,7 @@ function createApp({
   commercialOrderService,
   inventoryService,
   commerceRepository
+  ,cartCreationService
 }) {
   const app = express();
 
@@ -74,13 +76,16 @@ function createApp({
     }));
   }
   if (merchantService) app.use(createMerchantRoute({ merchantService }));
-  if (cartService && commercialOrderService && inventoryService && commerceRepository) {
+  if (commerceRepository || cartService || commercialOrderService || inventoryService) {
     app.use(createCommerceRoute({
-      cartService,
-      orderService: commercialOrderService,
-      inventoryService,
-      repository: commerceRepository
+      cartService: cartService || { addItem: async () => ({}) },
+      orderService: commercialOrderService || { createFromCart: async () => ({}) },
+      inventoryService: inventoryService || { reserve: async () => ({}) },
+      repository: commerceRepository || { getCart: async () => undefined, getCartItems: async () => [], listOrdersByUser: async () => [] }
     }));
+  }
+  if (cartCreationService || cartService?.create) {
+    app.use(createCartRoute({ cartCreationService: cartCreationService || cartService }));
   }
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));

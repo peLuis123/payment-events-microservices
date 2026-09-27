@@ -98,6 +98,8 @@ resources:
             AttributeType: S
           - AttributeName: merchantId
             AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
         KeySchema:
           - AttributeName: productId
             KeyType: HASH
@@ -105,6 +107,12 @@ resources:
           - IndexName: MerchantIndex
             KeySchema:
               - AttributeName: merchantId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: UserIndex
+            KeySchema:
+              - AttributeName: userId
                 KeyType: HASH
             Projection:
               ProjectionType: ALL

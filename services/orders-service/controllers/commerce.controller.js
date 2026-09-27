@@ -18,6 +18,7 @@ function createCommerceController({ cartService, orderService, inventoryService,
       } catch (error) { next(error); }
     },
     createOrder: async (request, response, next) => { try { const ids = identity(request, next); if (!ids) return; response.status(201).json(await orderService.createFromCart({ cartId: request.body.cartId, ...ids })); } catch (error) { next(error); } },
+    listOrders: async (request, response, next) => { try { if (!request.user?.userId) { response.status(401).json({ error: 'Authentication required', code: 'UNAUTHORIZED' }); return; } response.json(await repository.listOrdersByUser(request.user.userId)); } catch (error) { next(error); } },
     createCheckout: async (request, response, next) => { try { response.status(201).json(await orderService.createCheckout({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } },
     reserve: async (request, response, next) => { try { response.status(201).json(await inventoryService.reserve({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } }
   };

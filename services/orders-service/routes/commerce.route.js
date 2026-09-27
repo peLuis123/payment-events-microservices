@@ -6,6 +6,7 @@ function createCommerceRoute(dependencies) {
   router.post('/carts/:cartId/items', controller.addCartItem);
   router.get('/carts/:cartId', controller.getCart);
   router.post('/commercial-orders', controller.createOrder);
+  router.get('/commercial-orders', controller.listOrders);
   router.post('/commercial-orders/:orderId/checkout', controller.createCheckout);
   router.post('/commercial-orders/:orderId/inventory-reservations', controller.reserve);
   return router;

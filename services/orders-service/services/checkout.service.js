@@ -14,8 +14,10 @@ function createCheckoutService({
 
     const checkoutId = createCheckoutId();
     const paymentId = createPaymentId();
+    const successUrl = request.successUrl?.replace('{paymentId}', paymentId);
     const providerSession = await provider.createCheckout({
       ...request,
+      successUrl,
       checkoutId,
       paymentId
     });

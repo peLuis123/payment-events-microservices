@@ -24,6 +24,7 @@ function createCommerceRepository({ client, tables = {} }) {
     getOrderItems: async (orderId) => { const result = await client.send(new QueryCommand({ TableName: table('orderItems', 'OrderItems'), IndexName: 'OrderIndex', KeyConditionExpression: 'orderId = :orderId', ExpressionAttributeValues: { ':orderId': orderId } })); return result.Items || []; },
     getOrder: (id) => get(table('orders', 'CommercialOrders'), 'orderId', id),
     listOrders: (merchantId) => list(table('orders', 'CommercialOrders'), 'MerchantIndex', merchantId),
+    listOrdersByUser: async (userId) => { const result = await client.send(new QueryCommand({ TableName: table('orders', 'CommercialOrders'), IndexName: 'UserIndex', KeyConditionExpression: 'userId = :userId', ExpressionAttributeValues: { ':userId': userId } })); return result.Items || []; },
     reserveInventory: async ({ productId, quantity }) => {
       await client.send(new UpdateCommand({ TableName: table('inventory', 'Inventory'), Key: { productId }, UpdateExpression: 'ADD availableQuantity :delta, reservedQuantity :quantity', ConditionExpression: 'attribute_exists(availableQuantity) AND availableQuantity >= :quantity', ExpressionAttributeValues: { ':delta': -quantity, ':quantity': quantity } }));
       return { status: 'reserved' };
