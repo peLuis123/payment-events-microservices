@@ -240,3 +240,32 @@ La API de checkout usará `Idempotency-Key` para evitar crear dos pagos ante
 reintentos del cliente. Los webhooks usarán `providerEventId` para evitar
 procesar dos veces el mismo evento. Para llamadas a PayPal se enviará
 `PayPal-Request-Id`; para Stripe se enviará `Idempotency-Key`.
+
+## Correcciones de integración ecommerce
+
+- El carrito requiere sesión y propietario; añadir artículos actualiza cantidades mediante una transacción con control de concurrencia.
+- La reserva carga los artículos guardados del pedido y actualiza inventario y marcador de reserva en una sola transacción. Los reintentos del mismo pedido no descuentan stock otra vez.
+- Checkout actualiza los campos del pago sobre el pedido existente.
+- `GET /commercial-orders` devuelve pedidos del comprador; `GET /merchants/:merchantId/orders` requiere sesión admin y membresía admin activa en MerchantUsers.
+- La consulta de pagos requiere propietario, membresía admin o identidad de comercio autenticada. X-Merchant-Id por sí solo no autoriza el acceso.
+
+Para aplicar estas correcciones hay que desplegar orders-service con sus cambios IAM y el UserIndex de CommercialOrders, y esperar a que el índice esté activo. Configurar FRONTEND_ORIGIN con el origen exacto usado en el navegador (localhost y 127.0.0.1 son distintos). Inventory debe contener availableQuantity y reservedQuantity para los productos vendibles; Los productos nuevos inicializan Inventory de forma transaccional; los productos anteriores se inicializan mediante el endpoint de inventario. No se modifican datos existentes ni se despliega AWS al ejecutar los tests.
+
+Validación local: `cd services/orders-service` y `npm test -- --silent`. Los tests usan dobles de AWS; no sustituyen una prueba de integración en un entorno desplegado. La liberación/consumo definitivo de reservas y la recuperación duradera del checkout siguen siendo trabajo posterior.
+
+## Endpoints de ecommerce y roles
+
+| Método y ruta | Permiso |
+| --- | --- |
+| GET /products/:productId | Público para productos activos; admin del comercio para inactivos |
+| POST /products y POST /categories | Admin con membresía activa en el comercio |
+| PATCH /products/:productId | Admin del comercio; edición o status inactive |
+| PATCH /categories/:categoryId | Admin del comercio; edición o status inactive |
+| PATCH /carts/:cartId/items/:productId | Propietario; cuerpo {quantity: entero positivo} |
+| DELETE /carts/:cartId/items/:productId | Propietario; respuesta 204 |
+| GET /commercial-orders/:orderId | Propietario o admin del comercio |
+| GET /merchants/:merchantId/orders | Admin del comercio |
+| GET /products/:productId/inventory | Admin del comercio |
+| PATCH /products/:productId/inventory | Admin del comercio; availableQuantity y expectedAvailableQuantity |
+
+El PATCH de inventario mantiene reservedQuantity y sincroniza Products.stock; un valor esperado desactualizado devuelve 409. La reserva de pedidos descuenta ambas tablas en una sola transacción (hasta 49 productos distintos). No modificar stock mediante PATCH de producto. Los PATCH rechazan campos desconocidos, IDs y merchantId. La membresía se consulta en MerchantUsers, no se confía en un rol enviado por el cliente. Las rutas de lectura pública filtran inactivos; includeInactive=true requiere membresía admin. Los endpoints y sus respuestas están documentados en docs/openapi.yaml del servicio.

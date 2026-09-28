@@ -15,19 +15,26 @@ paths:
         - name: cartId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [productId, quantity]
+              required:
+                - productId
+                - quantity
               properties:
-                productId: { type: string }
-                quantity: { type: integer, minimum: 1 }
+                productId:
+                  type: string
+                quantity:
+                  type: integer
+                  minimum: 1
       responses:
-        "201": { description: Cart item added. }
+        '201':
+          description: Cart item added.
   /carts:
     post:
       summary: Create an empty cart
@@ -39,10 +46,16 @@ paths:
             schema:
               type: object
               properties:
-                merchantId: { type: string, example: merchant-123 }
-                currency: { type: string, pattern: "^[A-Z]{3}$", example: USD }
+                merchantId:
+                  type: string
+                  example: merchant-123
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+                  example: USD
       responses:
-        "201": { description: Cart created. }
+        '201':
+          description: Cart created.
   /carts/{cartId}:
     get:
       summary: Get a cart
@@ -51,20 +64,21 @@ paths:
         - name: cartId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: Cart and its items returned.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CartResponse"
-        "404":
+                $ref: '#/components/schemas/CartResponse'
+        '404':
           description: Cart not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /commercial-orders:
     get:
       summary: List current user commercial orders
@@ -72,7 +86,8 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        "200": { description: Commercial order history. }
+        '200':
+          description: Commercial order history.
     post:
       summary: Create a commercial order from a cart
       operationId: createCommercialOrder
@@ -82,11 +97,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [cartId]
+              required:
+                - cartId
               properties:
-                cartId: { type: string }
+                cartId:
+                  type: string
       responses:
-        "201": { description: Commercial order created. }
+        '201':
+          description: Commercial order created.
   /commercial-orders/{orderId}/inventory-reservations:
     post:
       summary: Reserve inventory for an order
@@ -95,9 +113,16 @@ paths:
         - name: orderId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "201": { description: Inventory reserved. }
+        '201':
+          description: Inventory reserved.
+      security:
+        - sessionCookie: []
+      description: >-
+        Uses saved order lines, never client quantities. Transaction includes reservation marker, inventory
+        and product stock. Maximum 49 distinct products. Owner only.
   /commercial-orders/{orderId}/checkout:
     post:
       summary: Create checkout for a commercial order
@@ -106,126 +131,156 @@ paths:
         - name: orderId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [paymentProvider, successUrl, cancelUrl, idempotencyKey]
+              required:
+                - paymentProvider
+                - successUrl
+                - cancelUrl
+                - idempotencyKey
               properties:
-                paymentProvider: { type: string, enum: [stripe, paypal] }
-                cancelUrl: { type: string, format: uri }
+                paymentProvider:
+                  type: string
+                  enum:
+                    - stripe
+                    - paypal
+                cancelUrl:
+                  type: string
+                  format: uri
                 successUrl:
                   type: string
                   format: uri
                   description: Use /checkout/success?paymentId={paymentId}; backend replaces the placeholder.
-                idempotencyKey: { type: string }
+                idempotencyKey:
+                  type: string
       responses:
-        "201": { description: Checkout session created. }
+        '201':
+          description: Checkout session created.
   /merchants:
     post:
       summary: Create a merchant
       operationId: createMerchant
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
-        - $ref: "#/components/parameters/AuthCookie"
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/AuthCookie'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name, defaultCurrency]
+              required:
+                - name
+                - defaultCurrency
               properties:
                 name:
                   type: string
                 defaultCurrency:
                   type: string
-                  pattern: "^[A-Z]{3}$"
+                  pattern: ^[A-Z]{3}$
       responses:
-        "201":
+        '201':
           description: Merchant created.
-        "403":
+        '403':
           description: Admin role required.
   /products:
     get:
       summary: List merchant products
       operationId: listProducts
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
+        - $ref: '#/components/parameters/MerchantId'
       responses:
-        "200":
+        '200':
           description: Product list.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ProductResponse"
+                  $ref: '#/components/schemas/ProductResponse'
+      security: []
+      description: Active entries only. includeInactive=true requires member admin.
     post:
       summary: Create a product
       operationId: createProduct
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
-        - $ref: "#/components/parameters/AuthCookie"
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/AuthCookie'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateProductRequest"
+              $ref: '#/components/schemas/CreateProductRequest'
       responses:
-        "201":
+        '201':
           description: Product created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProductResponse"
-        "403":
+                $ref: '#/components/schemas/ProductResponse'
+        '403':
           description: Admin role required.
+      security:
+        - sessionCookie: []
+      description: >-
+        Requires signed admin session and active admin membership in the merchant selected by X-Merchant-Id.
+        Body role/merchantId cannot grant access.
   /categories:
     get:
       summary: List merchant categories
       operationId: listCategories
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
+        - $ref: '#/components/parameters/MerchantId'
       responses:
-        "200":
+        '200':
           description: Category list.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/CategoryResponse"
+                  $ref: '#/components/schemas/CategoryResponse'
+      security: []
+      description: Active entries only. includeInactive=true requires member admin.
     post:
       summary: Create a category
       operationId: createCategory
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
+        - $ref: '#/components/parameters/MerchantId'
         - name: X-User-Role
           in: header
           required: true
           schema:
             type: string
-            enum: [admin]
+            enum:
+              - admin
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateCategoryRequest"
+              $ref: '#/components/schemas/CreateCategoryRequest'
       responses:
-        "201":
+        '201':
           description: Category created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CategoryResponse"
-        "403":
+                $ref: '#/components/schemas/CategoryResponse'
+        '403':
           description: Admin role required.
+      security:
+        - sessionCookie: []
+      description: >-
+        Requires signed admin session and active admin membership in the merchant selected by X-Merchant-Id.
+        Body role/merchantId cannot grant access.
   /auth/register:
     post:
       summary: Register a buyer account
@@ -235,20 +290,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterRequest"
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
-        "201":
+        '201':
           description: User registered.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponse"
-        "400":
+                $ref: '#/components/schemas/UserResponse'
+        '400':
           description: Invalid registration.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
       summary: Log in a user
@@ -258,20 +313,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginRequest"
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
+        '200':
           description: Login successful. HttpOnly cookies are set.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponse"
-        "401":
+                $ref: '#/components/schemas/UserResponse'
+        '401':
           description: Invalid credentials.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/me:
     get:
       summary: Get the authenticated user
@@ -279,18 +334,18 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        "200":
+        '200':
           description: Current user.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserResponse"
-        "401":
+                $ref: '#/components/schemas/UserResponse'
+        '401':
           description: Missing or expired access cookie.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/refresh:
     post:
       summary: Rotate the refresh cookie
@@ -298,16 +353,16 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        "200":
+        '200':
           description: Session refreshed and cookies rotated.
-        "401":
+        '401':
           description: Invalid refresh cookie.
   /auth/logout:
     post:
       summary: End the current session
       operationId: logout
       responses:
-        "204":
+        '204':
           description: Session ended and cookies cleared.
   /orders:
     post:
@@ -319,45 +374,45 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateOrderRequest"
+              $ref: '#/components/schemas/CreateOrderRequest'
             example:
               orderId: order-123
               customerId: customer-456
               amount: 49.99
               currency: USD
       responses:
-        "202":
+        '202':
           description: Order accepted and published to SQS.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AcceptedOrderResponse"
-        "400":
+                $ref: '#/components/schemas/AcceptedOrderResponse'
+        '400':
           description: Invalid order payload.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
           description: Unexpected internal error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /checkout/sessions:
     post:
       summary: Create a payment checkout session
       operationId: createCheckoutSession
       description: Creates a pending Stripe or PayPal checkout session through the payment processor.
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateCheckoutSessionRequest"
+              $ref: '#/components/schemas/CreateCheckoutSessionRequest'
             example:
               paymentProvider: paypal
               items:
@@ -369,148 +424,473 @@ paths:
               cancelUrl: https://frontend.example/cancel
               externalReference: cart-123
       responses:
-        "201":
+        '201':
           description: Checkout session created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CheckoutSessionResponse"
-        "400":
+                $ref: '#/components/schemas/CheckoutSessionResponse'
+        '400':
           description: Invalid checkout session payload.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "401":
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
           description: Missing merchant authentication.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
           description: Checkout provider error.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /payments/{paymentId}:
     get:
       summary: Get payment status
       operationId: getPayment
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
+        - $ref: '#/components/parameters/MerchantId'
         - name: paymentId
           in: path
           required: true
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: Current payment state.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaymentResponse"
-        "401":
+                $ref: '#/components/schemas/PaymentResponse'
+        '401':
           description: Missing merchant authentication.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: Payment not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /refunds:
     post:
       summary: Create a payment refund
       operationId: createRefund
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateRefundRequest"
+              $ref: '#/components/schemas/CreateRefundRequest'
       responses:
-        "201":
+        '201':
           description: Refund created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RefundResponse"
-        "400":
+                $ref: '#/components/schemas/RefundResponse'
+        '400':
           description: Invalid refund request.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /merchants/{merchantId}/balance:
     get:
       summary: Get merchant balance
       operationId: getMerchantBalance
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
+        - $ref: '#/components/parameters/MerchantId'
         - name: merchantId
           in: path
           required: true
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: Current available merchant balance.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BalanceResponse"
-        "401":
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
           description: Merchant identity does not match the path.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
   /payouts:
     post:
       summary: Create a merchant payout
       operationId: createPayout
       parameters:
-        - $ref: "#/components/parameters/MerchantId"
-        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: '#/components/parameters/MerchantId'
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreatePayoutRequest"
+              $ref: '#/components/schemas/CreatePayoutRequest'
       responses:
-        "201":
+        '201':
           description: Payout created or submitted.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PayoutResponse"
-        "400":
+                $ref: '#/components/schemas/PayoutResponse'
+        '400':
           description: Invalid payout request or insufficient balance.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
           description: Payment not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: '#/components/schemas/ErrorResponse'
+  /carts/{cartId}/items/{productId}:
+    patch:
+      summary: Set quantity on an item in your active cart
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+              required:
+                - quantity
+      responses:
+        '204':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+    delete:
+      summary: Remove an item from your active cart; repeated deletion is safe
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+  /products/{productId}:
+    get:
+      summary: Read an active product; inactive products require member admin
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+    patch:
+      summary: 'Member admin: edit or deactivate product; stock uses inventory endpoint'
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                slug:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                price:
+                  type: integer
+                  minimum: 1
+                  description: Minor currency units.
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+                categoryId:
+                  type: string
+                sku:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                attributes:
+                  type: object
+                  additionalProperties:
+                    type: string
+              required: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+  /categories/{categoryId}:
+    patch:
+      summary: 'Member admin: edit or deactivate category'
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                slug:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+              required: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+  /commercial-orders/{orderId}:
+    get:
+      summary: 'Read order and immutable lines: owner or member admin'
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+  /merchants/{merchantId}/orders:
+    get:
+      summary: 'Member admin: list merchant orders'
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+  /products/{productId}/inventory:
+    get:
+      summary: 'Member admin: read available and reserved quantities'
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+    patch:
+      summary: 'Member admin: set available stock without changing reservations; expected value prevents stale writes'
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                availableQuantity:
+                  type: integer
+                  minimum: 0
+                expectedAvailableQuantity:
+                  type: integer
+                  minimum: 0
+                  description: Value from latest inventory GET; use zero only when initializing missing inventory.
+              required:
+                - availableQuantity
+                - expectedAvailableQuantity
+      responses:
+        '200':
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
+        '401':
+          description: Session required.
+        '403':
+          description: Role, ownership or merchant membership denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
 components:
   securitySchemes:
     cookieAuth:
       type: apiKey
       in: cookie
       name: access_token
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: >-
+        Signed access cookie from login. Admin operations additionally require active admin membership in the
+        resource merchant.
   parameters:
     AuthCookie:
       name: Cookie
@@ -534,28 +914,53 @@ components:
   schemas:
     CartResponse:
       type: object
-      required: [cartId, userId, merchantId, currency, status, items]
+      required:
+        - cartId
+        - userId
+        - merchantId
+        - currency
+        - status
+        - items
       properties:
-        cartId: { type: string }
-        userId: { type: string }
-        merchantId: { type: string }
-        currency: { type: string, pattern: "^[A-Z]{3}$" }
-        status: { type: string }
+        cartId:
+          type: string
+        userId:
+          type: string
+        merchantId:
+          type: string
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        status:
+          type: string
         items:
           type: array
           items:
             type: object
-            required: [cartItemId, productId, quantity, unitAmount, totalAmount]
+            required:
+              - cartItemId
+              - productId
+              - quantity
+              - unitAmount
+              - totalAmount
             properties:
-              cartItemId: { type: string }
-              productId: { type: string }
-              quantity: { type: integer }
-              unitAmount: { type: integer }
-              totalAmount: { type: integer }
+              cartItemId:
+                type: string
+              productId:
+                type: string
+              quantity:
+                type: integer
+              unitAmount:
+                type: integer
+              totalAmount:
+                type: integer
     CreateProductRequest:
       type: object
       additionalProperties: false
-      required: [name, price, currency]
+      required:
+        - name
+        - price
+        - currency
       properties:
         name:
           type: string
@@ -570,7 +975,7 @@ components:
           minimum: 1
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
         imageUrl:
           type: string
           format: uri
@@ -584,9 +989,12 @@ components:
           minimum: 0
     ProductResponse:
       allOf:
-        - $ref: "#/components/schemas/CreateProductRequest"
+        - $ref: '#/components/schemas/CreateProductRequest'
         - type: object
-          required: [productId, merchantId, status]
+          required:
+            - productId
+            - merchantId
+            - status
           properties:
             productId:
               type: string
@@ -597,7 +1005,8 @@ components:
     CreateCategoryRequest:
       type: object
       additionalProperties: false
-      required: [name]
+      required:
+        - name
       properties:
         name:
           type: string
@@ -607,9 +1016,12 @@ components:
           type: string
     CategoryResponse:
       allOf:
-        - $ref: "#/components/schemas/CreateCategoryRequest"
+        - $ref: '#/components/schemas/CreateCategoryRequest'
         - type: object
-          required: [categoryId, merchantId, status]
+          required:
+            - categoryId
+            - merchantId
+            - status
           properties:
             categoryId:
               type: string
@@ -620,7 +1032,9 @@ components:
     RegisterRequest:
       type: object
       additionalProperties: false
-      required: [email, password]
+      required:
+        - email
+        - password
       properties:
         email:
           type: string
@@ -633,7 +1047,9 @@ components:
     LoginRequest:
       type: object
       additionalProperties: false
-      required: [email, password]
+      required:
+        - email
+        - password
       properties:
         email:
           type: string
@@ -642,7 +1058,11 @@ components:
           type: string
     UserResponse:
       type: object
-      required: [userId, email, role, status]
+      required:
+        - userId
+        - email
+        - role
+        - status
       properties:
         userId:
           type: string
@@ -653,30 +1073,38 @@ components:
           type: string
         role:
           type: string
-          enum: [buyer, admin]
+          enum:
+            - buyer
+            - admin
         status:
           type: string
     CreateOrderRequest:
       type: object
       additionalProperties: false
-      required: [orderId, customerId, amount, currency]
+      required:
+        - orderId
+        - customerId
+        - amount
+        - currency
       properties:
         orderId:
           type: string
-          pattern: "^order-[A-Za-z0-9-]+$"
+          pattern: ^order-[A-Za-z0-9-]+$
         customerId:
           type: string
-          pattern: "^customer-[A-Za-z0-9-]+$"
+          pattern: ^customer-[A-Za-z0-9-]+$
         amount:
           type: number
           exclusiveMinimum: 0
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
           example: USD
     AcceptedOrderResponse:
       type: object
-      required: [message, eventId]
+      required:
+        - message
+        - eventId
       properties:
         message:
           type: string
@@ -685,7 +1113,8 @@ components:
           type: string
     ErrorResponse:
       type: object
-      required: [error]
+      required:
+        - error
       properties:
         error:
           type: string
@@ -695,14 +1124,12 @@ components:
       type: object
       additionalProperties: false
       required:
-        [
-          items,
-          currency,
-          paymentProvider,
-          successUrl,
-          cancelUrl,
-          externalReference,
-        ]
+        - items
+        - currency
+        - paymentProvider
+        - successUrl
+        - cancelUrl
+        - externalReference
       properties:
         items:
           type: array
@@ -710,7 +1137,10 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [productId, quantity, unitAmount]
+            required:
+              - productId
+              - quantity
+              - unitAmount
             properties:
               productId:
                 type: string
@@ -723,10 +1153,12 @@ components:
                 description: Amount in the smallest currency unit, such as cents.
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
         paymentProvider:
           type: string
-          enum: [stripe, paypal]
+          enum:
+            - stripe
+            - paypal
         successUrl:
           type: string
           format: uri
@@ -737,7 +1169,11 @@ components:
           type: string
     CheckoutSessionResponse:
       type: object
-      required: [checkoutId, checkoutUrl, paymentId, status]
+      required:
+        - checkoutId
+        - checkoutUrl
+        - paymentId
+        - status
       properties:
         checkoutId:
           type: string
@@ -748,10 +1184,14 @@ components:
           type: string
         status:
           type: string
-          enum: [pending]
+          enum:
+            - pending
     PaymentResponse:
       type: object
-      required: [paymentId, provider, status]
+      required:
+        - paymentId
+        - provider
+        - status
       properties:
         paymentId:
           type: string
@@ -759,10 +1199,18 @@ components:
           type: string
         provider:
           type: string
-          enum: [stripe, paypal]
+          enum:
+            - stripe
+            - paypal
         status:
           type: string
-          enum: [pending, approved, rejected, refunded, disputed, cancelled]
+          enum:
+            - pending
+            - approved
+            - rejected
+            - refunded
+            - disputed
+            - cancelled
         amount:
           type: integer
         currency:
@@ -770,7 +1218,10 @@ components:
     CreateRefundRequest:
       type: object
       additionalProperties: false
-      required: [paymentId, amount, currency]
+      required:
+        - paymentId
+        - amount
+        - currency
       properties:
         paymentId:
           type: string
@@ -779,10 +1230,13 @@ components:
           minimum: 1
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
     RefundResponse:
       type: object
-      required: [refundId, providerRefundId, status]
+      required:
+        - refundId
+        - providerRefundId
+        - status
       properties:
         refundId:
           type: string
@@ -792,7 +1246,11 @@ components:
           type: string
     BalanceResponse:
       type: object
-      required: [merchantId, available, pending, currency]
+      required:
+        - merchantId
+        - available
+        - pending
+        - currency
       properties:
         merchantId:
           type: string
@@ -804,17 +1262,24 @@ components:
           minimum: 0
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
     CreatePayoutRequest:
       type: object
       additionalProperties: false
-      required: [payoutId, provider, merchantAccountId, amount, currency]
+      required:
+        - payoutId
+        - provider
+        - merchantAccountId
+        - amount
+        - currency
       properties:
         payoutId:
           type: string
         provider:
           type: string
-          enum: [stripe, paypal]
+          enum:
+            - stripe
+            - paypal
         merchantAccountId:
           type: string
         amount:
@@ -822,10 +1287,13 @@ components:
           minimum: 1
         currency:
           type: string
-          pattern: "^[A-Z]{3}$"
+          pattern: ^[A-Z]{3}$
     PayoutResponse:
       type: object
-      required: [payoutId, providerPayoutId, status]
+      required:
+        - payoutId
+        - providerPayoutId
+        - status
       properties:
         payoutId:
           type: string
