@@ -46,3 +46,6 @@ yarn-error.log*
 !readme.md
 !**/README.md
 !**/readme.md
+# Generated local code analysis
+/.codegraph/
+/graphify-out/
