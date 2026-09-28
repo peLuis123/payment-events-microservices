@@ -36,8 +36,9 @@ function createApp({
   cartService,
   commercialOrderService,
   inventoryService,
-  commerceRepository
-  ,cartCreationService
+  commerceRepository,
+  getMembership,
+  cartCreationService,
 }) {
   const app = express();
 
@@ -58,34 +59,69 @@ function createApp({
   app.use(rateLimiter);
   if (authService) app.use(createAuthRoute({ authService, sessionAuth }));
   if (sessionAuth) app.use(sessionAuth);
-  if (merchantAuth) app.use(merchantAuth);
+  if (merchantAuth)
+    app.use((req, res, next) => {
+      const commercePath =
+        /^\/(carts|commercial-orders|payments)(\/|$)/.test(req.path) ||
+        /^\/merchants\/[^/]+\/orders$/.test(req.path);
+      const catalogPath = /^\/(products|categories)(\/|$)/.test(req.path);
+      if (
+        (req.user && (commercePath || catalogPath)) ||
+        (req.method === 'GET' &&
+          catalogPath &&
+          !req.path.endsWith('/inventory'))
+      )
+        return next();
+      return merchantAuth(req, res, next);
+    });
   app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
   app.use(createCheckoutRoute({ checkoutService }));
-  app.use(createPaymentRoute({ paymentClient }));
+  app.use(createPaymentRoute({ paymentClient, getMembership }));
   app.use(createRefundRoute({ paymentClient }));
   app.use(createBalanceRoute({ paymentClient }));
   app.use(createPayoutRoute({ paymentClient }));
   if (catalogService) {
-    app.use(createCatalogRoute({
-      catalogService,
-      catalogRepository: catalogRepository || {
-        listProducts: async () => [],
-        listCategories: async () => []
-      }
-    }));
+    app.use(
+      createCatalogRoute({
+        catalogService,
+        getMembership,
+        catalogRepository: catalogRepository || {
+          listProducts: async () => [],
+          listCategories: async () => [],
+        },
+      }),
+    );
   }
   if (merchantService) app.use(createMerchantRoute({ merchantService }));
-  if (commerceRepository || cartService || commercialOrderService || inventoryService) {
-    app.use(createCommerceRoute({
-      cartService: cartService || { addItem: async () => ({}) },
-      orderService: commercialOrderService || { createFromCart: async () => ({}) },
-      inventoryService: inventoryService || { reserve: async () => ({}) },
-      repository: commerceRepository || { getCart: async () => undefined, getCartItems: async () => [], listOrdersByUser: async () => [] }
-    }));
+  if (
+    commerceRepository ||
+    cartService ||
+    commercialOrderService ||
+    inventoryService
+  ) {
+    app.use(
+      createCommerceRoute({
+        getMembership,
+        cartService: cartService || { addItem: async () => ({}) },
+        orderService: commercialOrderService || {
+          createFromCart: async () => ({}),
+        },
+        inventoryService: inventoryService || { reserve: async () => ({}) },
+        repository: commerceRepository || {
+          getCart: async () => undefined,
+          getCartItems: async () => [],
+          listOrdersByUser: async () => [],
+        },
+      }),
+    );
   }
   if (cartCreationService || cartService?.create) {
-    app.use(createCartRoute({ cartCreationService: cartCreationService || cartService }));
+    app.use(
+      createCartRoute({
+        cartCreationService: cartCreationService || cartService,
+      }),
+    );
   }
   app.use(createOrdersRoute({ orderService }));
   app.use(createErrorHandler({ logger }));
@@ -94,5 +130,5 @@ function createApp({
 }
 
 module.exports = {
-  createApp
+  createApp,
 };

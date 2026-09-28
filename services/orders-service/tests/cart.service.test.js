@@ -1,18 +1,53 @@
 const { createCartService } = require('../services/cart.service');
-
-describe('createCartService', () => {
-  test('adds a product using the current catalog price', async () => {
-    const saveCart = jest.fn().mockResolvedValue(undefined);
-    const saveItem = jest.fn().mockResolvedValue(undefined);
-    const service = createCartService({
-      getProduct: jest.fn().mockResolvedValue({ productId: 'product-123', price: 5799, currency: 'USD', status: 'active' }),
-      saveCart,
-      saveItem,
-      createId: () => 'cart-123'
-    });
-
-    await expect(service.addItem({ userId: 'user-123', merchantId: 'merchant-123', productId: 'product-123', quantity: 2 }))
-      .resolves.toEqual({ cartId: 'cart-123', productId: 'product-123', quantity: 2, unitAmount: 5799, currency: 'USD' });
-    expect(saveItem).toHaveBeenCalledWith(expect.objectContaining({ totalAmount: 11598 }));
+const cart = {
+  cartId: 'cart-1',
+  userId: 'buyer-1',
+  merchantId: 'shop-1',
+  currency: 'USD',
+  status: 'active',
+};
+const product = {
+  productId: 'product-1',
+  merchantId: 'shop-1',
+  price: 5799,
+  currency: 'USD',
+  status: 'active',
+};
+function setup(overrides = {}) {
+  const addItem = jest.fn();
+  return {
+    addItem,
+    service: createCartService({
+      getCart: async () => cart,
+      getProduct: async () => product,
+      addItem,
+      ...overrides,
+    }),
+  };
+}
+test('adds to an existing cart using the catalog price', async () => {
+  const { service, addItem } = setup();
+  await service.addItem({
+    ...cart,
+    productId: product.productId,
+    quantity: 2,
+    unitAmount: 1,
   });
+  expect(addItem).toHaveBeenCalledWith({ cart, product, quantity: 2 });
+});
+test.each([0, -1, 1.5])('rejects invalid quantity %s', async (quantity) => {
+  const { service, addItem } = setup();
+  await expect(
+    service.addItem({ ...cart, productId: product.productId, quantity }),
+  ).rejects.toMatchObject({ statusCode: 400 });
+  expect(addItem).not.toHaveBeenCalled();
+});
+test('rejects a product from another store', async () => {
+  const { service, addItem } = setup({
+    getProduct: async () => ({ ...product, merchantId: 'other' }),
+  });
+  await expect(
+    service.addItem({ ...cart, productId: product.productId, quantity: 1 }),
+  ).rejects.toMatchObject({ statusCode: 400 });
+  expect(addItem).not.toHaveBeenCalled();
 });

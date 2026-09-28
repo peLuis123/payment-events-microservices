@@ -6,23 +6,38 @@ const { createOrderService } = require('../services/order.service');
 const { createSqsRepository } = require('../repositories/sqs.repository');
 const { loadEnvironment } = require('../validators/env.validator');
 const { createCheckoutService } = require('../services/checkout.service');
-const { createPaymentProcessorClient } = require('../clients/payment-processor.client');
-const { createMerchantAuth, parseMerchantKeys } = require('../middlewares/merchant-auth');
+const {
+  createPaymentProcessorClient,
+} = require('../clients/payment-processor.client');
+const {
+  createMerchantAuth,
+  parseMerchantKeys,
+} = require('../middlewares/merchant-auth');
 const { createRateLimiter } = require('../middlewares/rate-limiter');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const { createUserRepository } = require('../repositories/user.repository');
-const { createCatalogRepository } = require('../repositories/catalog.repository');
+const {
+  createCatalogRepository,
+} = require('../repositories/catalog.repository');
 const { createCatalogService } = require('../services/catalog.service');
 const { createMerchantService } = require('../services/merchant.service');
-const { createMerchantRepository } = require('../repositories/merchant.repository');
+const {
+  createMerchantRepository,
+} = require('../repositories/merchant.repository');
 const { createSessionAuth } = require('../middlewares/session-auth');
 const { createAuthService } = require('../services/auth.service');
-const { createCommerceRepository } = require('../repositories/commerce.repository');
+const {
+  createCommerceRepository,
+} = require('../repositories/commerce.repository');
 const { createCartService } = require('../services/cart.service');
-const { createCommercialOrderService } = require('../services/commercial-order.service');
+const {
+  createCommercialOrderService,
+} = require('../services/commercial-order.service');
 const { createInventoryService } = require('../services/inventory.service');
-const { createCartCreationService } = require('../services/cart.creation.service');
+const {
+  createCartCreationService,
+} = require('../services/cart.creation.service');
 
 /**
  * Creates a Lambda handler from an Express application.
@@ -48,49 +63,53 @@ function createProductionHandler({
   createEventId,
   createCheckoutId,
   createPaymentId,
-  now
+  now,
 } = {}) {
   const config = loadEnvironment(environment);
   const sqsClient = client || new SQSClient({ region: config.AWS_REGION });
   const repository = createSqsRepository({
     client: sqsClient,
-    queueUrl: config.SQS_QUEUE_URL
+    queueUrl: config.SQS_QUEUE_URL,
   });
   const orderService = createOrderService({
     publishEvent: repository.publish,
     createEventId,
-    now
+    now,
   });
   const checkoutService = createCheckoutService({
     createCheckoutId,
     createPaymentId,
     provider: createPaymentProcessorClient({
       baseUrl: config.PAYMENT_PROCESSOR_CHECKOUT_URL,
-      fetchImpl
-    })
+      fetchImpl,
+    }),
   });
   const paymentClient = createPaymentProcessorClient({
     baseUrl: config.PAYMENT_PROCESSOR_CHECKOUT_URL,
-    fetchImpl
+    fetchImpl,
   });
   const merchantKeys = parseMerchantKeys(environment.MERCHANT_API_KEYS);
-  const dynamodb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: config.AWS_REGION }));
+  const dynamodb = DynamoDBDocumentClient.from(
+    new DynamoDBClient({ region: config.AWS_REGION }),
+    { marshallOptions: { removeUndefinedValues: true } },
+  );
   const userRepository = createUserRepository({
     client: dynamodb,
     tableName: environment.USERS_TABLE || 'Users',
-    refreshTableName: environment.REFRESH_TOKENS_TABLE || 'RefreshTokens'
+    refreshTableName: environment.REFRESH_TOKENS_TABLE || 'RefreshTokens',
   });
   const authService = createAuthService(userRepository);
   const catalogRepository = createCatalogRepository({
     client: dynamodb,
     productsTable: environment.PRODUCTS_TABLE || 'Products',
-    categoriesTable: environment.CATEGORIES_TABLE || 'Categories'
+    categoriesTable: environment.CATEGORIES_TABLE || 'Categories',
+    inventoryTable: environment.INVENTORY_TABLE || 'Inventory',
   });
   const catalogService = createCatalogService(catalogRepository);
   const merchantRepository = createMerchantRepository({
     client: dynamodb,
     merchantsTable: environment.MERCHANTS_TABLE || 'Merchants',
-    merchantUsersTable: environment.MERCHANT_USERS_TABLE || 'MerchantUsers'
+    merchantUsersTable: environment.MERCHANT_USERS_TABLE || 'MerchantUsers',
   });
   const merchantService = createMerchantService(merchantRepository);
   const commerceRepository = createCommerceRepository({
@@ -100,13 +119,36 @@ function createProductionHandler({
       cartItems: environment.CART_ITEMS_TABLE || 'CartItems',
       orders: environment.COMMERCIAL_ORDERS_TABLE || 'CommercialOrders',
       orderItems: environment.ORDER_ITEMS_TABLE || 'OrderItems',
-      inventory: environment.INVENTORY_TABLE || 'Inventory'
-    }
+      inventory: environment.INVENTORY_TABLE || 'Inventory',
+      products: environment.PRODUCTS_TABLE || 'Products',
+    },
   });
-  const cartService = createCartService({ getProduct: catalogRepository.getProduct, saveCart: commerceRepository.saveCart, saveItem: commerceRepository.saveCartItem });
-  const commercialOrderService = createCommercialOrderService({ getCartItems: commerceRepository.getCartItems, getProduct: catalogRepository.getProduct, saveOrder: commerceRepository.saveOrder, saveItems: commerceRepository.saveOrderItems, getOrder: commerceRepository.getOrder, getOrderItems: commerceRepository.getOrderItems, checkoutService });
-  const inventoryService = createInventoryService({ reserve: commerceRepository.reserveInventory });
-  const cartCreationService = createCartCreationService({ saveCart: commerceRepository.saveCart });
+  const cartService = createCartService({
+    getProduct: catalogRepository.getProduct,
+    getCart: commerceRepository.getCart,
+    addItem: commerceRepository.addCartItem,
+    getCartItem: commerceRepository.getCartItem,
+    setCartItem: commerceRepository.setCartItem,
+    removeCartItem: commerceRepository.removeCartItem,
+  });
+  const commercialOrderService = createCommercialOrderService({
+    getCartItems: commerceRepository.getCartItems,
+    getProduct: catalogRepository.getProduct,
+    saveOrder: commerceRepository.saveOrder,
+    updateOrderPayment: commerceRepository.updateOrderPayment,
+    saveItems: commerceRepository.saveOrderItems,
+    getOrder: commerceRepository.getOrder,
+    getOrderItems: commerceRepository.getOrderItems,
+    checkoutService,
+  });
+  const inventoryService = createInventoryService({
+    reserve: commerceRepository.reserveInventory,
+    getOrder: commerceRepository.getOrder,
+    getOrderItems: commerceRepository.getOrderItems,
+  });
+  const cartCreationService = createCartCreationService({
+    saveCart: commerceRepository.saveCart,
+  });
   const app = createApp({
     orderService,
     checkoutService,
@@ -117,7 +159,7 @@ function createProductionHandler({
       : undefined,
     sessionAuth: createSessionAuth({
       secret: environment.AUTH_TOKEN_SECRET,
-      optional: true
+      optional: true,
     }),
     authService,
     catalogService,
@@ -127,11 +169,12 @@ function createProductionHandler({
     commercialOrderService,
     inventoryService,
     commerceRepository,
+    getMembership: merchantRepository.getMembership,
     cartCreationService,
     rateLimiter: createRateLimiter({
       windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),
-      max: Number(environment.RATE_LIMIT_MAX || 60)
-    })
+      max: Number(environment.RATE_LIMIT_MAX || 60),
+    }),
   });
 
   return createHandler({ app });
@@ -147,5 +190,5 @@ async function handler(event, context, callback) {
 module.exports = {
   createHandler,
   createProductionHandler,
-  handler
+  handler,
 };

@@ -1,26 +1,134 @@
 const { AppError } = require('../middlewares/error.middleware');
-
-function createCommerceController({ cartService, orderService, inventoryService, repository }) {
-  function identity(request, next) {
-    const userId = request.user?.userId;
-    const merchantId = request.merchantId || request.get('X-Merchant-Id');
-    if (!userId && !merchantId) { next(new AppError('Authentication required', 401, 'UNAUTHORIZED')); return; }
-    return { userId: userId || merchantId, merchantId: merchantId || 'platform-merchant' };
+const {
+  requireUser,
+  requireOwner,
+  requireMerchantAdmin,
+} = require('../services/resource-access');
+function createCommerceController({
+  cartService,
+  orderService,
+  inventoryService,
+  repository,
+  getMembership = async () => undefined,
+}) {
+  const handle = (fn) => async (request, response, next) => {
+    try {
+      await fn(request, response);
+    } catch (error) {
+      next(error);
+    }
+  };
+  async function cartFor(request) {
+    requireUser(request);
+    return requireOwner(
+      request,
+      await repository.getCart(request.params.cartId || request.body?.cartId),
+    );
+  }
+  async function orderFor(request) {
+    requireUser(request);
+    return requireOwner(
+      request,
+      await repository.getOrder(request.params.orderId),
+    );
   }
   return {
-    addCartItem: async (request, response, next) => { try { const ids = identity(request, next); if (!ids) return; response.status(201).json(await cartService.addItem({ ...request.body, ...ids, cartId: request.params.cartId })); } catch (error) { next(error); } },
-    getCart: async (request, response, next) => {
-      try {
-        const cart = await repository.getCart(request.params.cartId);
-        if (!cart) { response.status(404).json({ error: 'Cart not found', code: 'CART_NOT_FOUND' }); return; }
-        const items = await repository.getCartItems(request.params.cartId);
-        response.json({ ...cart, items });
-      } catch (error) { next(error); }
-    },
-    createOrder: async (request, response, next) => { try { const ids = identity(request, next); if (!ids) return; response.status(201).json(await orderService.createFromCart({ cartId: request.body.cartId, ...ids })); } catch (error) { next(error); } },
-    listOrders: async (request, response, next) => { try { if (!request.user?.userId) { response.status(401).json({ error: 'Authentication required', code: 'UNAUTHORIZED' }); return; } response.json(await repository.listOrdersByUser(request.user.userId)); } catch (error) { next(error); } },
-    createCheckout: async (request, response, next) => { try { response.status(201).json(await orderService.createCheckout({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } },
-    reserve: async (request, response, next) => { try { response.status(201).json(await inventoryService.reserve({ ...request.body, orderId: request.params.orderId })); } catch (error) { next(error); } }
+    addCartItem: handle(async (req, res) => {
+      const cart = await cartFor(req);
+      res
+        .status(201)
+        .json(
+          await cartService.addItem({
+            ...req.body,
+            cartId: cart.cartId,
+            userId: cart.userId,
+            merchantId: cart.merchantId,
+          }),
+        );
+    }),
+    updateCartItem: handle(async (req, res) => {
+      const cart = await cartFor(req);
+      if (!req.body || Object.keys(req.body).some((key) => key !== 'quantity'))
+        throw new AppError(
+          'Only quantity can be updated',
+          400,
+          'INVALID_CART_ITEM',
+        );
+      await cartService.updateItem({
+        cartId: cart.cartId,
+        productId: req.params.productId,
+        quantity: req.body.quantity,
+        userId: cart.userId,
+        merchantId: cart.merchantId,
+      });
+      res.status(204).end();
+    }),
+    removeCartItem: handle(async (req, res) => {
+      const cart = await cartFor(req);
+      await cartService.removeItem({
+        cartId: cart.cartId,
+        productId: req.params.productId,
+        userId: cart.userId,
+        merchantId: cart.merchantId,
+      });
+      res.status(204).end();
+    }),
+    getOrder: handle(async (req, res) => {
+      requireUser(req);
+      const order = await repository.getOrder(req.params.orderId);
+      if (!order) throw new AppError('Order not found', 404, 'NOT_FOUND');
+      if (order.userId !== req.user.userId)
+        await requireMerchantAdmin(req, order.merchantId, getMembership);
+      res.json({
+        ...order,
+        items: order.items || (await repository.getOrderItems(order.orderId)),
+      });
+    }),
+    getCart: handle(async (req, res) => {
+      const cart = await cartFor(req);
+      res.json({ ...cart, items: await repository.getCartItems(cart.cartId) });
+    }),
+    createOrder: handle(async (req, res) => {
+      const cart = await cartFor(req);
+      res
+        .status(201)
+        .json(
+          await orderService.createFromCart({
+            cartId: cart.cartId,
+            userId: cart.userId,
+            merchantId: cart.merchantId,
+            currency: cart.currency,
+          }),
+        );
+    }),
+    listOrders: handle(async (req, res) =>
+      res.json(await repository.listOrdersByUser(requireUser(req))),
+    ),
+    listMerchantOrders: handle(async (req, res) => {
+      await requireMerchantAdmin(req, req.params.merchantId, getMembership);
+      res.json(await repository.listOrders(req.params.merchantId));
+    }),
+    createCheckout: handle(async (req, res) => {
+      const order = await orderFor(req);
+      const idempotencyKey = req.get('Idempotency-Key');
+      if (!idempotencyKey)
+        throw new AppError('Idempotency-Key required', 400, 'INVALID_CHECKOUT');
+      res
+        .status(201)
+        .json(
+          await orderService.createCheckout({
+            ...req.body,
+            orderId: order.orderId,
+            idempotencyKey,
+          }),
+        );
+    }),
+    reserve: handle(async (req, res) => {
+      const order = await orderFor(req);
+      res
+        .status(201)
+        .json(await inventoryService.reserve({ orderId: order.orderId }));
+    }),
   };
 }
 module.exports = { createCommerceController };
