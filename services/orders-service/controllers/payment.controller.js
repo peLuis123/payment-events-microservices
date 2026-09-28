@@ -1,18 +1,30 @@
 const { AppError } = require('../middlewares/error.middleware');
-
-function createPaymentController({ paymentClient }) {
+const {
+  requireUser,
+  requireMerchantAdmin,
+} = require('../services/resource-access');
+function createPaymentController({
+  paymentClient,
+  getMembership = async () => undefined,
+}) {
   return async function getPayment(request, response, next) {
     try {
-      if (!request.merchantId && !request.get('X-Merchant-Id')) {
-        next(new AppError('Merchant authentication required', 401, 'UNAUTHORIZED'));
-        return;
-      }
+      if (!request.user && !request.merchantId) requireUser(request);
       const payment = await paymentClient.getPayment(request.params.paymentId);
-      response.status(200).json(payment);
+      if (!payment) throw new AppError('Payment not found', 404, 'NOT_FOUND');
+      if (request.user) {
+        if (payment.userId !== request.user.userId)
+          await requireMerchantAdmin(
+            request,
+            payment.merchantId,
+            getMembership,
+          );
+      } else if (payment.merchantId !== request.merchantId)
+        throw new AppError('Access denied', 403, 'FORBIDDEN');
+      response.json(payment);
     } catch (error) {
       next(error);
     }
   };
 }
-
 module.exports = { createPaymentController };

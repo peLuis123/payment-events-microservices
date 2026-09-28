@@ -6,14 +6,19 @@ describe('GET /payments/:paymentId', () => {
     const paymentClient = {
       getPayment: jest.fn().mockResolvedValue({
         paymentId: 'payment-123',
+        userId: 'buyer-1',
         status: 'approved',
-        provider: 'paypal'
-      })
+        provider: 'paypal',
+      }),
     };
     const app = createApp({
       orderService: { createOrder: jest.fn() },
       paymentClient,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      sessionAuth: (req, res, next) => {
+        req.user = { userId: 'buyer-1', role: 'buyer' };
+        next();
+      },
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
 
     const response = await request(app)
@@ -23,8 +28,9 @@ describe('GET /payments/:paymentId', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       paymentId: 'payment-123',
+      userId: 'buyer-1',
       status: 'approved',
-      provider: 'paypal'
+      provider: 'paypal',
     });
     expect(paymentClient.getPayment).toHaveBeenCalledWith('payment-123');
   });

@@ -8,12 +8,23 @@ describe('session auth middleware', () => {
     const app = express();
     app.use(createSessionAuth({ secret: 'test-secret' }));
     app.get('/admin', (request, response) => response.json(request.user));
-    const token = signTokenValue({ type: 'access', userId: 'user-123', role: 'admin' }, 'test-secret');
+    const token = signTokenValue(
+      { type: 'access', userId: 'user-123', role: 'admin' },
+      'test-secret',
+    );
 
-    const response = await request(app).get('/admin').set('Cookie', `access_token=${token}`).expect(200);
-    expect(response.body).toEqual(expect.objectContaining({
-      type: 'access', userId: 'user-123', role: 'admin', exp: expect.any(Number)
-    }));
+    const response = await request(app)
+      .get('/admin')
+      .set('Cookie', `access_token=${token}`)
+      .expect(200);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        type: 'access',
+        userId: 'user-123',
+        role: 'admin',
+        exp: expect.any(Number),
+      }),
+    );
   });
 
   test('rejects a missing access cookie', async () => {
@@ -22,4 +33,18 @@ describe('session auth middleware', () => {
     app.get('/admin', (request, response) => response.sendStatus(200));
     await request(app).get('/admin').expect(401);
   });
+});
+
+test('does not accept a refresh token as an access token', async () => {
+  const app = express();
+  app.use(createSessionAuth({ secret: 'test-secret' }));
+  app.get('/private', (req, res) => res.sendStatus(200));
+  const token = signTokenValue(
+    { type: 'refresh', userId: 'user-123' },
+    'test-secret',
+  );
+  await request(app)
+    .get('/private')
+    .set('Cookie', 'access_token=' + token)
+    .expect(401);
 });
