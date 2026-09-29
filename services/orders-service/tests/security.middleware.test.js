@@ -7,7 +7,9 @@ describe('merchant security middleware', () => {
   test('accepts a configured merchant API key and sets merchant identity', async () => {
     const app = express();
     app.use(createMerchantAuth({ keys: { 'key-123': 'merchant-123' } }));
-    app.get('/protected', (request, response) => response.json({ merchantId: request.merchantId }));
+    app.get('/protected', (request, response) =>
+      response.json({ merchantId: request.merchantId }),
+    );
 
     const response = await request(app)
       .get('/protected')
@@ -22,8 +24,7 @@ describe('merchant security middleware', () => {
     app.use(createMerchantAuth({ keys: { 'key-123': 'merchant-123' } }));
     app.get('/protected', (request, response) => response.sendStatus(200));
 
-    await request(app).get('/protected').set('X-Api-Key', 'wrong')
-      .expect(401);
+    await request(app).get('/protected').set('X-Api-Key', 'wrong').expect(401);
   });
 
   test('limits requests per identity', async () => {
@@ -34,4 +35,12 @@ describe('merchant security middleware', () => {
     await request(app).get('/limited').expect(200);
     await request(app).get('/limited').expect(429);
   });
+});
+
+test('rotating unverified API keys cannot bypass the rate limit', async () => {
+  const app = express();
+  app.use(createRateLimiter({ max: 1 }));
+  app.get('/limited', (req, res) => res.sendStatus(200));
+  await request(app).get('/limited').set('X-Api-Key', 'fake-one').expect(200);
+  await request(app).get('/limited').set('X-Api-Key', 'fake-two').expect(429);
 });
