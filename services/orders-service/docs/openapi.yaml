@@ -7,18 +7,47 @@ servers:
   - url: /
     description: Current Orders Service host
 paths:
-  /me/merchants:
+  /admin/orders:
     get:
-      summary: List active stores administered by the signed-in user
+      summary: 'Store admin: list merchant orders'
+      parameters: []
       security:
         - sessionCookie: []
       responses:
         '200':
-          description: Active stores with merchantId, name and defaultCurrency. Empty when no active memberships.
+          description: Success.
+        '400':
+          description: Invalid fields or quantities.
         '401':
           description: Session required.
         '403':
-          description: Admin role required.
+          description: Role, ownership or configured store access denied.
+        '404':
+          description: Resource not found.
+        '409':
+          description: Stock or concurrent-update conflict. Reload before retrying.
+      description: Admin session required. Uses STOREFRONT_MERCHANT_ID; no merchant record or membership required.
+  /admin/balance:
+    get:
+      summary: Get merchant balance
+      operationId: getAdminBalance
+      parameters: []
+      responses:
+        '200':
+          description: Current available merchant balance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
+          description: Merchant identity does not match the path.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - sessionCookie: []
+      description: Admin session required. Uses STOREFRONT_MERCHANT_ID; no merchant record or membership required.
   /carts/{cartId}/items:
     post:
       summary: Add a product to a cart
@@ -183,33 +212,16 @@ paths:
           description: Checkout session created.
   /merchants:
     post:
-      summary: Create a merchant
-      operationId: createMerchant
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - defaultCurrency
-              properties:
-                name:
-                  type: string
-                defaultCurrency:
-                  type: string
-                  pattern: ^[A-Z]{3}$
-      responses:
-        '201':
-          description: Merchant created.
-        '403':
-          description: Admin role required.
+      summary: Additional stores are disabled
       security:
         - sessionCookie: []
-      description: >-
-        Admin session required. ownerUserId is always the authenticated user; the service also creates their
-        active admin membership.
+      responses:
+        '401':
+          description: Session required
+        '403':
+          description: Admin role required
+        '409':
+          description: 'SINGLE_STORE_MODE: use the configured store'
   /products:
     get:
       summary: List merchant products
@@ -231,7 +243,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProductResponse'
       security: []
-      description: Active public catalog; defaults to STOREFRONT_MERCHANT_ID. includeInactive=true requires member admin.
+      description: Public active catalog of the configured store. includeInactive=true requires admin.
     post:
       summary: Create a product
       operationId: createProduct
@@ -252,14 +264,11 @@ paths:
                 $ref: '#/components/schemas/ProductResponse'
         '403':
           description: Admin role required.
-        '409':
-          description: 'MERCHANT_SELECTION_REQUIRED: select one of GET /me/merchants.'
       security:
         - sessionCookie: []
       description: >-
-        Signed admin session and active merchant membership required. With one store, merchantId is automatic;
-        with multiple stores, select using the merchantId query parameter. No merchant or role header grants
-        access.
+        Signed admin session required. The server uses STOREFRONT_MERCHANT_ID without merchant records or
+        memberships. No merchant or role header grants access.
   /categories:
     get:
       summary: List merchant categories
@@ -281,7 +290,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/CategoryResponse'
       security: []
-      description: Active public catalog; defaults to STOREFRONT_MERCHANT_ID. includeInactive=true requires member admin.
+      description: Public active catalog of the configured store. includeInactive=true requires admin.
     post:
       summary: Create a category
       operationId: createCategory
@@ -302,14 +311,11 @@ paths:
                 $ref: '#/components/schemas/CategoryResponse'
         '403':
           description: Admin role required.
-        '409':
-          description: 'MERCHANT_SELECTION_REQUIRED: select one of GET /me/merchants.'
       security:
         - sessionCookie: []
       description: >-
-        Signed admin session and active merchant membership required. With one store, merchantId is automatic;
-        with multiple stores, select using the merchantId query parameter. No merchant or role header grants
-        access.
+        Signed admin session required. The server uses STOREFRONT_MERCHANT_ID without merchant records or
+        memberships. No merchant or role header grants access.
   /auth/register:
     post:
       summary: Register a buyer account
@@ -544,7 +550,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
         - sessionCookie: []
-      description: Active member admin of the payment merchant required. The merchant is derived from the saved payment.
+      description: Admin of the configured store of the payment merchant required. The merchant is derived from the saved payment.
   /merchants/{merchantId}/balance:
     get:
       summary: Get merchant balance
@@ -570,7 +576,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
         - sessionCookie: []
-      description: Active member admin of the merchant in the path required.
+      description: Admin of the configured store of the merchant in the path required.
   /payouts:
     post:
       summary: Create a merchant payout
@@ -605,7 +611,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       security:
         - sessionCookie: []
-      description: Active member admin required; sole store selected automatically, otherwise merchantId query is required.
+      description: Admin session required. Uses the fixed STOREFRONT_MERCHANT_ID.
   /carts/{cartId}/items/{productId}:
     patch:
       summary: Set quantity on an item in your active cart
@@ -643,7 +649,7 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
@@ -671,14 +677,14 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
   /products/{productId}:
     get:
-      summary: Read an active product; inactive products require member admin
+      summary: Read an active product; inactive products require store admin
       parameters:
         - name: productId
           in: path
@@ -694,13 +700,13 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
     patch:
-      summary: 'Member admin: edit or deactivate product; stock uses inventory endpoint'
+      summary: 'Store admin: edit or deactivate product; stock uses inventory endpoint'
       parameters:
         - name: productId
           in: path
@@ -761,14 +767,14 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
   /categories/{categoryId}:
     patch:
-      summary: 'Member admin: edit or deactivate category'
+      summary: 'Store admin: edit or deactivate category'
       parameters:
         - name: categoryId
           in: path
@@ -806,14 +812,14 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
   /commercial-orders/{orderId}:
     get:
-      summary: 'Read order and immutable lines: owner or member admin'
+      summary: 'Read order and immutable lines: owner or store admin'
       parameters:
         - name: orderId
           in: path
@@ -830,14 +836,14 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
   /merchants/{merchantId}/orders:
     get:
-      summary: 'Member admin: list merchant orders'
+      summary: 'Store admin: list merchant orders'
       parameters:
         - name: merchantId
           in: path
@@ -854,14 +860,14 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
   /products/{productId}/inventory:
     get:
-      summary: 'Member admin: read available and reserved quantities'
+      summary: 'Store admin: read available and reserved quantities'
       parameters:
         - name: productId
           in: path
@@ -878,13 +884,13 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
           description: Stock or concurrent-update conflict. Reload before retrying.
     patch:
-      summary: 'Member admin: set available stock without changing reservations; expected value prevents stale writes'
+      summary: 'Store admin: set available stock without changing reservations; expected value prevents stale writes'
       parameters:
         - name: productId
           in: path
@@ -919,7 +925,7 @@ paths:
         '401':
           description: Session required.
         '403':
-          description: Role, ownership or merchant membership denied.
+          description: Role, ownership or configured store access denied.
         '404':
           description: Resource not found.
         '409':
@@ -940,8 +946,7 @@ components:
       in: cookie
       name: access_token
       description: >-
-        Signed access cookie from login. Admin operations additionally require active admin membership in the
-        resource merchant.
+        Signed access cookie from login. Admin operations additionally require admin role and access to the configured store.
   parameters:
     AuthCookie:
       name: Cookie

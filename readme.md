@@ -246,8 +246,8 @@ procesar dos veces el mismo evento. Para llamadas a PayPal se enviará
 - El carrito requiere sesión y propietario; añadir artículos actualiza cantidades mediante una transacción con control de concurrencia.
 - La reserva carga los artículos guardados del pedido y actualiza inventario y marcador de reserva en una sola transacción. Los reintentos del mismo pedido no descuentan stock otra vez.
 - Checkout actualiza los campos del pago sobre el pedido existente.
-- `GET /commercial-orders` devuelve pedidos del comprador; `GET /merchants/:merchantId/orders` requiere sesión admin y membresía admin activa en MerchantUsers.
-- La consulta de pagos requiere propietario, membresía admin o identidad de comercio autenticada. X-Merchant-Id por sí solo no autoriza el acceso.
+- `GET /commercial-orders` devuelve pedidos del comprador; `GET /merchants/:merchantId/orders` requiere sesión admin y sesión admin de la tienda fija en MerchantUsers.
+- La consulta de pagos requiere propietario, rol admin de la tienda fija o identidad de comercio autenticada. X-Merchant-Id por sí solo no autoriza el acceso.
 
 Para aplicar estas correcciones hay que desplegar orders-service con sus cambios IAM y el UserIndex de CommercialOrders, y esperar a que el índice esté activo. Configurar FRONTEND_ORIGIN con el origen exacto usado en el navegador (localhost y 127.0.0.1 son distintos). Inventory debe contener availableQuantity y reservedQuantity para los productos vendibles; Los productos nuevos inicializan Inventory de forma transaccional; los productos anteriores se inicializan mediante el endpoint de inventario. No se modifican datos existentes ni se despliega AWS al ejecutar los tests.
 
@@ -258,7 +258,7 @@ Validación local: `cd services/orders-service` y `npm test -- --silent`. Los te
 | Método y ruta | Permiso |
 | --- | --- |
 | GET /products/:productId | Público para productos activos; admin del comercio para inactivos |
-| POST /products y POST /categories | Admin con membresía activa en el comercio |
+| POST /products y POST /categories | Sesión admin de la tienda fija |
 | PATCH /products/:productId | Admin del comercio; edición o status inactive |
 | PATCH /categories/:categoryId | Admin del comercio; edición o status inactive |
 | PATCH /carts/:cartId/items/:productId | Propietario; cuerpo {quantity: entero positivo} |
@@ -268,17 +268,16 @@ Validación local: `cd services/orders-service` y `npm test -- --silent`. Los te
 | GET /products/:productId/inventory | Admin del comercio |
 | PATCH /products/:productId/inventory | Admin del comercio; availableQuantity y expectedAvailableQuantity |
 
-El PATCH de inventario mantiene reservedQuantity y sincroniza Products.stock; un valor esperado desactualizado devuelve 409. La reserva de pedidos descuenta ambas tablas en una sola transacción (hasta 49 productos distintos). No modificar stock mediante PATCH de producto. Los PATCH rechazan campos desconocidos, IDs y merchantId. La membresía se consulta en MerchantUsers, no se confía en un rol enviado por el cliente. Las rutas de lectura pública filtran inactivos; includeInactive=true requiere membresía admin. Los endpoints y sus respuestas están documentados en docs/openapi.yaml del servicio.
+El PATCH de inventario mantiene reservedQuantity y sincroniza Products.stock; un valor esperado desactualizado devuelve 409. La reserva de pedidos descuenta ambas tablas en una sola transacción (hasta 49 productos distintos). No modificar stock mediante PATCH de producto. Los PATCH rechazan campos desconocidos, IDs y merchantId. El rol se obtiene de la sesión firmada y el recurso debe pertenecer a la tienda fija; no se consulta MerchantUsers ni se confía en roles enviados por el cliente. Las rutas de lectura pública filtran inactivos; includeInactive=true requiere rol admin de la tienda fija. Los endpoints y sus respuestas están documentados en docs/openapi.yaml del servicio.
 
-## Sesión, tiendas e integraciones
+## Tienda única: vendedor y compradores
 
-El frontend ya no necesita X-Merchant-Id ni X-Api-Key. Las operaciones administrativas requieren una sesión con rol admin y membresía admin activa en MerchantUsers; además, el comercio debe estar activo. Ser admin no concede acceso global a todas las tiendas.
+El flujo actual es una tienda fija, un vendedor con rol admin y compradores con rol buyer. Los registros nuevos se crean siempre como buyer; el vendedor se provisiona fuera del registro público. La autorización usa la sesión firmada y el ID interno STOREFRONT_MERCHANT_ID; no consulta Merchants ni MerchantUsers y no exige crear comercios o membresías.
 
-- GET /me/merchants devuelve las tiendas administrables. El servidor elige automáticamente cuando solo hay una; con varias, POST /products, POST /categories y POST /payouts requieren ?merchantId=... (409 MERCHANT_SELECTION_REQUIRED si falta).
-- Catálogo público y creación de carritos usan STOREFRONT_MERCHANT_ID del backend; se puede seleccionar explícitamente un comercio activo mediante query. El body de un carrito no puede contradecir esa tienda.
-- Productos, categorías, inventario, pedidos y pagos existentes determinan su comercio desde el recurso guardado. Balance valida el comercio de la ruta; reembolsos validan el comercio del pago.
-- POST /merchants toma ownerUserId de la sesión y crea su membresía. No toma la identidad del header ni del body. Varios administradores pueden estar vinculados a una misma tienda y uno a varias tiendas.
-- X-Api-Key se reserva para integraciones de servidor: POST /checkout/sessions, POST /orders y GET /payments/:paymentId. Las claves se configuran en MERCHANT_API_KEYS (clave:merchantId). No sirven para catálogo, balance, reembolsos o retiros. Si no se configuran claves, los endpoints exclusivos de integración permanecen cerrados. El checkout del comprador utiliza POST /commercial-orders/:orderId/checkout con precios guardados.
-- Idempotency-Key se conserva en checkout, reembolsos y retiros para evitar duplicados.
+- GET /products y GET /categories listan el catálogo público de la tienda configurada. POST y PATCH de catálogo e inventario requieren admin. Los recursos de otra tienda se rechazan.
+- GET /admin/orders y GET /admin/balance resuelven la tienda en el servidor, sin selector. Las rutas antiguas /merchants/:merchantId/orders y /balance solo aceptan el ID de la tienda fija.
+- Los compradores conservan permisos por propietario sobre carritos, pedidos y pagos. La creación del carrito usa el ID interno del servidor.
+- GET /me/merchants ya no se expone. POST /merchants devuelve 409 SINGLE_STORE_MODE para un admin: no se crean tiendas adicionales.
+- X-Merchant-Id no autoriza ni selecciona la tienda. Las API keys siguen reservadas para integraciones de servidor; el navegador usa cookies. Idempotency-Key se mantiene para operaciones de pago.
 
-Despliegue: actualizar orders-service, incluido UserIndex de MerchantUsers y su permiso IAM. Configurar STOREFRONT_MERCHANT_ID (valor predeterminado merchant-123) con una tienda existente activa; desplegar después el frontend. Los admins ya creados necesitan su registro MerchantUsers con merchantId, userId, role=admin y status=active. Esta migración no concede membresías automáticamente ni modifica usuarios remotos. La gestión de invitaciones y roles más detallados puede añadirse sobre esa relación.
+Desplegar orders-service con STOREFRONT_MERCHANT_ID (valor predeterminado merchant-123), conservando el valor que corresponda a los productos/pedidos existentes. No es necesaria una migración de datos ni crear registros en Merchants/MerchantUsers. No se eliminan tablas ni índices desplegados. La administración de múltiples vendedores se pospone.
