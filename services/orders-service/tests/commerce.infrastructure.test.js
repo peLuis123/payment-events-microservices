@@ -34,3 +34,21 @@ test('runtime can update inventory and access the commerce tables and indexes', 
   ])
     expect(policy.Resource.some((r) => r.endsWith(resource))).toBe(true);
 });
+
+test('merchant membership user index has query permissions', () => {
+  expect(
+    config.resources.Resources.MerchantUsersTable.Properties
+      .GlobalSecondaryIndexes,
+  ).toContainEqual(
+    expect.objectContaining({
+      IndexName: 'UserIndex',
+      KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
+    }),
+  );
+  const policy = config.provider.iam.role.statements.find((s) =>
+    s.Action.includes('dynamodb:Query'),
+  );
+  expect(
+    policy.Resource.some((r) => r.includes("MerchantUsers'}/index/UserIndex")),
+  ).toBe(true);
+});

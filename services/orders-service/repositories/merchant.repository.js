@@ -1,4 +1,8 @@
-const { PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const {
+  PutCommand,
+  GetCommand,
+  QueryCommand,
+} = require('@aws-sdk/lib-dynamodb');
 
 function createMerchantRepository({
   client,
@@ -6,6 +10,34 @@ function createMerchantRepository({
   merchantUsersTable = 'MerchantUsers',
 }) {
   return {
+    getMerchant: async (merchantId) =>
+      (
+        await client.send(
+          new GetCommand({
+            TableName: merchantsTable,
+            Key: { merchantId },
+            ConsistentRead: true,
+          }),
+        )
+      ).Item,
+    listMemberships: async (userId) => {
+      const items = [];
+      let cursor;
+      do {
+        const page = await client.send(
+          new QueryCommand({
+            TableName: merchantUsersTable,
+            IndexName: 'UserIndex',
+            KeyConditionExpression: 'userId = :user',
+            ExpressionAttributeValues: { ':user': userId },
+            ExclusiveStartKey: cursor,
+          }),
+        );
+        items.push(...(page.Items || []));
+        cursor = page.LastEvaluatedKey;
+      } while (cursor);
+      return items;
+    },
     getMembership: async (merchantId, userId) => {
       const result = await client.send(
         new GetCommand({

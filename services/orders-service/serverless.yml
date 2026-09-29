@@ -11,6 +11,7 @@ provider:
     NODE_ENV: ${env:NODE_ENV, 'production'}
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
     PAYMENT_PROCESSOR_CHECKOUT_URL: ${env:PAYMENT_PROCESSOR_CHECKOUT_URL}
+    STOREFRONT_MERCHANT_ID: ${env:STOREFRONT_MERCHANT_ID, 'merchant-123'}
     MERCHANT_API_KEYS: ${env:MERCHANT_API_KEYS, ''}
     RATE_LIMIT_WINDOW_MS: ${env:RATE_LIMIT_WINDOW_MS, '60000'}
     RATE_LIMIT_MAX: ${env:RATE_LIMIT_MAX, '60'}
@@ -51,6 +52,7 @@ provider:
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CATEGORIES_TABLE, 'Categories'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CATEGORIES_TABLE, 'Categories'}/index/MerchantIndex
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANTS_TABLE, 'Merchants'}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}/index/UserIndex
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:MERCHANT_USERS_TABLE, 'MerchantUsers'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CARTS_TABLE, 'Carts'}
             - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:CART_ITEMS_TABLE, 'CartItems'}
@@ -169,6 +171,13 @@ resources:
             KeyType: HASH
           - AttributeName: userId
             KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: UserIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
     CartsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -271,7 +280,6 @@ functions:
           - Content-Type
           - Cookie
           - X-Api-Key
-          - X-Merchant-Id
           - Idempotency-Key
         allowedMethods:
           - GET
