@@ -1,3 +1,4 @@
+const { createMerchantAuth } = require('../middlewares/merchant-auth');
 const request = require('supertest');
 const { createApp } = require('../src/app');
 
@@ -8,23 +9,28 @@ describe('checkout provider integration', () => {
         checkoutId: 'checkout-stripe-123',
         checkoutUrl: 'https://checkout.stripe.test/session-123',
         paymentId: 'payment-stripe-123',
-        status: 'pending'
-      })
+        status: 'pending',
+      }),
     };
     const checkoutService = {
-      createSession: jest.fn().mockImplementation((request) =>
-        checkoutProcessor.createCheckout(request)
-      )
+      createSession: jest
+        .fn()
+        .mockImplementation((request) =>
+          checkoutProcessor.createCheckout(request),
+        ),
     };
     const app = createApp({
+      merchantAuth: createMerchantAuth({
+        keys: { 'test-key': 'merchant-123' },
+      }),
       orderService: { createOrder: jest.fn() },
       checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
 
     const response = await request(app)
       .post('/checkout/sessions')
-      .set('X-Merchant-Id', 'merchant-123')
+      .set('X-Api-Key', 'test-key')
       .set('Idempotency-Key', 'checkout-stripe-123')
       .send({
         items: [{ productId: 'product-123', quantity: 1, unitAmount: 4999 }],
@@ -32,7 +38,7 @@ describe('checkout provider integration', () => {
         paymentProvider: 'stripe',
         successUrl: 'https://frontend.test/success',
         cancelUrl: 'https://frontend.test/cancel',
-        externalReference: 'cart-123'
+        externalReference: 'cart-123',
       });
 
     expect(response.status).toBe(201);
@@ -41,8 +47,8 @@ describe('checkout provider integration', () => {
       expect.objectContaining({
         paymentProvider: 'stripe',
         merchantId: 'merchant-123',
-        idempotencyKey: 'checkout-stripe-123'
-      })
+        idempotencyKey: 'checkout-stripe-123',
+      }),
     );
   });
 });

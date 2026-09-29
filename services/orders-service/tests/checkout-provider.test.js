@@ -1,3 +1,4 @@
+const { createMerchantAuth } = require('../middlewares/merchant-auth');
 const request = require('supertest');
 const { createApp } = require('../src/app');
 
@@ -6,43 +7,52 @@ const basePayload = {
   currency: 'USD',
   successUrl: 'https://frontend.test/success',
   cancelUrl: 'https://frontend.test/cancel',
-  externalReference: 'cart-123'
+  externalReference: 'cart-123',
 };
 
 describe('checkout payment provider', () => {
-  test.each(['stripe', 'paypal'])('accepts the %s provider', async (paymentProvider) => {
-    const checkoutService = {
-      createSession: jest.fn().mockResolvedValue({ status: 'pending' })
-    };
-    const app = createApp({
-      orderService: { createOrder: jest.fn() },
-      checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
-    });
+  test.each(['stripe', 'paypal'])(
+    'accepts the %s provider',
+    async (paymentProvider) => {
+      const checkoutService = {
+        createSession: jest.fn().mockResolvedValue({ status: 'pending' }),
+      };
+      const app = createApp({
+        merchantAuth: createMerchantAuth({
+          keys: { 'test-key': 'merchant-123' },
+        }),
+        orderService: { createOrder: jest.fn() },
+        checkoutService,
+        logger: { warn: jest.fn(), error: jest.fn() },
+      });
 
-    const response = await request(app)
-      .post('/checkout/sessions')
-      .set('X-Merchant-Id', 'merchant-123')
-      .set('Idempotency-Key', `checkout-${paymentProvider}`)
-      .send({ ...basePayload, paymentProvider });
+      const response = await request(app)
+        .post('/checkout/sessions')
+        .set('X-Api-Key', 'test-key')
+        .set('Idempotency-Key', `checkout-${paymentProvider}`)
+        .send({ ...basePayload, paymentProvider });
 
-    expect(response.status).toBe(201);
-    expect(checkoutService.createSession).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentProvider })
-    );
-  });
+      expect(response.status).toBe(201);
+      expect(checkoutService.createSession).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentProvider }),
+      );
+    },
+  );
 
   test('rejects an unsupported provider', async () => {
     const checkoutService = { createSession: jest.fn() };
     const app = createApp({
+      merchantAuth: createMerchantAuth({
+        keys: { 'test-key': 'merchant-123' },
+      }),
       orderService: { createOrder: jest.fn() },
       checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
 
     const response = await request(app)
       .post('/checkout/sessions')
-      .set('X-Merchant-Id', 'merchant-123')
+      .set('X-Api-Key', 'test-key')
       .set('Idempotency-Key', 'checkout-unsupported')
       .send({ ...basePayload, paymentProvider: 'bitcoin' });
 

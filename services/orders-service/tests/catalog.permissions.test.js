@@ -31,16 +31,15 @@ function setup(role = 'admin', member = true) {
     saveCategory: jest.fn(),
     patchProduct: jest.fn(async (p, changes) => ({ ...p, ...changes })),
     patchCategory: jest.fn(async (c, changes) => ({ ...c, ...changes })),
-    getInventory: jest
-      .fn()
-      .mockResolvedValue({
-        productId: 'p1',
-        availableQuantity: 5,
-        reservedQuantity: 0,
-      }),
+    getInventory: jest.fn().mockResolvedValue({
+      productId: 'p1',
+      availableQuantity: 5,
+      reservedQuantity: 0,
+    }),
     updateInventory: jest.fn().mockResolvedValue({ availableQuantity: 10 }),
   };
   const app = createApp({
+    getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
     orderService: {},
     catalogService: createCatalogService(repository),
     catalogRepository: repository,
@@ -73,7 +72,7 @@ test.each(writes)('buyer cannot %s %s', async (method, path, body) => {
   const { app, repository } = setup('buyer');
   await request(app)
     [method](path)
-    .set('X-Merchant-Id', 'm1')
+    .query({ merchantId: 'm1' })
     .send(body)
     .expect(403);
   expect(repository.saveProduct).not.toHaveBeenCalled();
@@ -83,7 +82,7 @@ test.each(writes)('buyer cannot %s %s', async (method, path, body) => {
 test.each(writes)('anonymous cannot %s %s', async (method, path, body) => {
   await request(setup(null).app)
     [method](path)
-    .set('X-Merchant-Id', 'm1')
+    .query({ merchantId: 'm1' })
     .send(body)
     .expect(401);
 });
@@ -92,7 +91,7 @@ test.each(writes)(
   async (method, path, body) => {
     await request(setup('admin', false).app)
       [method](path)
-      .set('X-Merchant-Id', 'm1')
+      .query({ merchantId: 'm1' })
       .send(body)
       .expect(403);
   },
@@ -100,7 +99,7 @@ test.each(writes)(
 test.each(writes)('member admin can %s %s', async (method, path, body) => {
   await request(setup().app)
     [method](path)
-    .set('X-Merchant-Id', 'm1')
+    .query({ merchantId: 'm1' })
     .send(body)
     .expect(method === 'post' ? 201 : 200);
 });
@@ -132,13 +131,13 @@ test('public catalog excludes inactive products and can read active detail', asy
   const { app } = setup(null);
   const result = await request(app)
     .get('/products')
-    .set('X-Merchant-Id', 'm1')
+    .query({ merchantId: 'm1' })
     .expect(200);
   expect(result.body).toHaveLength(1);
   await request(app).get('/products/p1').expect(200);
   await request(app)
     .get('/products?includeInactive=true')
-    .set('X-Merchant-Id', 'm1')
+    .query({ merchantId: 'm1' })
     .expect(401);
   await request(app).get('/products/p1/inventory').expect(401);
 });
@@ -154,6 +153,7 @@ test('real signed sessions enforce buyer/admin roles even when API-key middlewar
   const { signTokenValue } = require('../services/auth.service');
   const createProduct = jest.fn().mockResolvedValue({ productId: 'new' });
   const app = createApp({
+    getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
     orderService: {},
     catalogService: { createProduct },
     sessionAuth: createSessionAuth({ secret: 'test', optional: true }),
@@ -170,7 +170,7 @@ test('real signed sessions enforce buyer/admin roles even when API-key middlewar
     await request(app)
       .post('/products')
       .set('Cookie', 'access_token=' + token)
-      .set('X-Merchant-Id', 'm1')
+      .query({ merchantId: 'm1' })
       .send(body)
       .expect(role === 'admin' ? 201 : 403);
   }

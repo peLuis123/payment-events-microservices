@@ -170,6 +170,9 @@ function createProductionHandler({
     inventoryService,
     commerceRepository,
     getMembership: merchantRepository.getMembership,
+    listMemberships: merchantRepository.listMemberships,
+    getMerchant: merchantRepository.getMerchant,
+    storefrontMerchantId: environment.STOREFRONT_MERCHANT_ID,
     cartCreationService,
     rateLimiter: createRateLimiter({
       windowMs: Number(environment.RATE_LIMIT_WINDOW_MS || 60000),

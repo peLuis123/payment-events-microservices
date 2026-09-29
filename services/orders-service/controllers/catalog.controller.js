@@ -19,8 +19,7 @@ function createCatalogController({
       next(error);
     }
   };
-  const merchantId = (req) =>
-    req.merchantId || req.get('X-Merchant-Id') || req.query.merchantId;
+  const merchantId = (req) => req.merchantId || req.query.merchantId;
   async function admin(req, id) {
     await requireMerchantAdmin(req, id, getMembership);
   }

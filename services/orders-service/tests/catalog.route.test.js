@@ -13,6 +13,7 @@ describe('catalog routes', () => {
       next();
     };
     const app = createApp({
+      getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
       orderService: { createOrder: jest.fn() },
       catalogService,
       getMembership: async () => ({ role: 'admin', status: 'active' }),
@@ -22,7 +23,7 @@ describe('catalog routes', () => {
 
     const response = await request(app)
       .post('/products')
-      .set('X-Merchant-Id', 'merchant-123')
+      .query({ merchantId: 'merchant-123' })
       .send({ name: 'Keyboard', price: 5799, currency: 'USD', stock: 10 });
 
     expect(response.status).toBe(201);
@@ -37,6 +38,7 @@ describe('catalog routes', () => {
       next();
     };
     const app = createApp({
+      getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
       orderService: { createOrder: jest.fn() },
       catalogService: { createProduct: jest.fn() },
       sessionAuth,
@@ -44,7 +46,7 @@ describe('catalog routes', () => {
     });
     await request(app)
       .post('/products')
-      .set('X-Merchant-Id', 'merchant-123')
+      .query({ merchantId: 'merchant-123' })
       .send({ name: 'Keyboard', price: 5799, currency: 'USD' })
       .expect(403);
   });

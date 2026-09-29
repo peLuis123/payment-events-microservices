@@ -1,3 +1,4 @@
+const { createMerchantAuth } = require('../middlewares/merchant-auth');
 const request = require('supertest');
 const { createApp } = require('../src/app');
 
@@ -7,16 +8,19 @@ const payload = {
   paymentProvider: 'stripe',
   successUrl: 'https://frontend.test/success',
   cancelUrl: 'https://frontend.test/cancel',
-  externalReference: 'cart-123'
+  externalReference: 'cart-123',
 };
 
 describe('checkout authorization', () => {
   test('rejects checkout creation without a merchant identity', async () => {
     const checkoutService = { createSession: jest.fn() };
     const app = createApp({
+      merchantAuth: createMerchantAuth({
+        keys: { 'test-key': 'merchant-123' },
+      }),
       orderService: { createOrder: jest.fn() },
       checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
 
     const response = await request(app)
@@ -30,22 +34,25 @@ describe('checkout authorization', () => {
 
   test('passes the merchant identity to checkout creation', async () => {
     const checkoutService = {
-      createSession: jest.fn().mockResolvedValue({ status: 'pending' })
+      createSession: jest.fn().mockResolvedValue({ status: 'pending' }),
     };
     const app = createApp({
+      merchantAuth: createMerchantAuth({
+        keys: { 'test-key': 'merchant-123' },
+      }),
       orderService: { createOrder: jest.fn() },
       checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
 
     await request(app)
       .post('/checkout/sessions')
-      .set('X-Merchant-Id', 'merchant-123')
+      .set('X-Api-Key', 'test-key')
       .set('Idempotency-Key', 'checkout-request-123')
       .send(payload);
 
     expect(checkoutService.createSession).toHaveBeenCalledWith(
-      expect.objectContaining({ merchantId: 'merchant-123' })
+      expect.objectContaining({ merchantId: 'merchant-123' }),
     );
   });
 });

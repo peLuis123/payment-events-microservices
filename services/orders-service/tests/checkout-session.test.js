@@ -1,3 +1,4 @@
+const { createMerchantAuth } = require('../middlewares/merchant-auth');
 const request = require('supertest');
 const { createApp } = require('../src/app');
 
@@ -8,13 +9,16 @@ describe('POST /checkout/sessions', () => {
         checkoutId: 'checkout-123',
         checkoutUrl: 'https://checkout.stripe.test/session-123',
         paymentId: 'payment-123',
-        status: 'pending'
-      })
+        status: 'pending',
+      }),
     };
     const app = createApp({
+      merchantAuth: createMerchantAuth({
+        keys: { 'test-key': 'merchant-123' },
+      }),
       orderService: { createOrder: jest.fn() },
       checkoutService,
-      logger: { warn: jest.fn(), error: jest.fn() }
+      logger: { warn: jest.fn(), error: jest.fn() },
     });
     const payload = {
       items: [{ productId: 'product-123', quantity: 2, unitAmount: 4999 }],
@@ -22,12 +26,12 @@ describe('POST /checkout/sessions', () => {
       paymentProvider: 'stripe',
       successUrl: 'https://frontend.test/success',
       cancelUrl: 'https://frontend.test/cancel',
-      externalReference: 'cart-123'
+      externalReference: 'cart-123',
     };
 
     const response = await request(app)
       .post('/checkout/sessions')
-      .set('X-Merchant-Id', 'merchant-123')
+      .set('X-Api-Key', 'test-key')
       .set('Idempotency-Key', 'checkout-request-123')
       .send(payload);
 
@@ -36,12 +40,12 @@ describe('POST /checkout/sessions', () => {
       checkoutId: 'checkout-123',
       checkoutUrl: 'https://checkout.stripe.test/session-123',
       paymentId: 'payment-123',
-      status: 'pending'
+      status: 'pending',
     });
     expect(checkoutService.createSession).toHaveBeenCalledWith({
       ...payload,
       merchantId: 'merchant-123',
-      idempotencyKey: 'checkout-request-123'
+      idempotencyKey: 'checkout-request-123',
     });
   });
 });
