@@ -269,3 +269,16 @@ Validación local: `cd services/orders-service` y `npm test -- --silent`. Los te
 | PATCH /products/:productId/inventory | Admin del comercio; availableQuantity y expectedAvailableQuantity |
 
 El PATCH de inventario mantiene reservedQuantity y sincroniza Products.stock; un valor esperado desactualizado devuelve 409. La reserva de pedidos descuenta ambas tablas en una sola transacción (hasta 49 productos distintos). No modificar stock mediante PATCH de producto. Los PATCH rechazan campos desconocidos, IDs y merchantId. La membresía se consulta en MerchantUsers, no se confía en un rol enviado por el cliente. Las rutas de lectura pública filtran inactivos; includeInactive=true requiere membresía admin. Los endpoints y sus respuestas están documentados en docs/openapi.yaml del servicio.
+
+## Sesión, tiendas e integraciones
+
+El frontend ya no necesita X-Merchant-Id ni X-Api-Key. Las operaciones administrativas requieren una sesión con rol admin y membresía admin activa en MerchantUsers; además, el comercio debe estar activo. Ser admin no concede acceso global a todas las tiendas.
+
+- GET /me/merchants devuelve las tiendas administrables. El servidor elige automáticamente cuando solo hay una; con varias, POST /products, POST /categories y POST /payouts requieren ?merchantId=... (409 MERCHANT_SELECTION_REQUIRED si falta).
+- Catálogo público y creación de carritos usan STOREFRONT_MERCHANT_ID del backend; se puede seleccionar explícitamente un comercio activo mediante query. El body de un carrito no puede contradecir esa tienda.
+- Productos, categorías, inventario, pedidos y pagos existentes determinan su comercio desde el recurso guardado. Balance valida el comercio de la ruta; reembolsos validan el comercio del pago.
+- POST /merchants toma ownerUserId de la sesión y crea su membresía. No toma la identidad del header ni del body. Varios administradores pueden estar vinculados a una misma tienda y uno a varias tiendas.
+- X-Api-Key se reserva para integraciones de servidor: POST /checkout/sessions, POST /orders y GET /payments/:paymentId. Las claves se configuran en MERCHANT_API_KEYS (clave:merchantId). No sirven para catálogo, balance, reembolsos o retiros. Si no se configuran claves, los endpoints exclusivos de integración permanecen cerrados. El checkout del comprador utiliza POST /commercial-orders/:orderId/checkout con precios guardados.
+- Idempotency-Key se conserva en checkout, reembolsos y retiros para evitar duplicados.
+
+Despliegue: actualizar orders-service, incluido UserIndex de MerchantUsers y su permiso IAM. Configurar STOREFRONT_MERCHANT_ID (valor predeterminado merchant-123) con una tienda existente activa; desplegar después el frontend. Los admins ya creados necesitan su registro MerchantUsers con merchantId, userId, role=admin y status=active. Esta migración no concede membresías automáticamente ni modifica usuarios remotos. La gestión de invitaciones y roles más detallados puede añadirse sobre esa relación.

@@ -7,6 +7,18 @@ servers:
   - url: /
     description: Current Orders Service host
 paths:
+  /me/merchants:
+    get:
+      summary: List active stores administered by the signed-in user
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Active stores with merchantId, name and defaultCurrency. Empty when no active memberships.
+        '401':
+          description: Session required.
+        '403':
+          description: Admin role required.
   /carts/{cartId}/items:
     post:
       summary: Add a product to a cart
@@ -56,6 +68,13 @@ paths:
       responses:
         '201':
           description: Cart created.
+      security:
+        - sessionCookie: []
+      description: >-
+        Creates a cart in the configured STOREFRONT_MERCHANT_ID (or merchantId query). Requires an active
+        merchant. Optional body merchantId must match.
+      parameters:
+        - $ref: '#/components/parameters/MerchantId'
   /carts/{cartId}:
     get:
       summary: Get a cart
@@ -166,9 +185,6 @@ paths:
     post:
       summary: Create a merchant
       operationId: createMerchant
-      parameters:
-        - $ref: '#/components/parameters/MerchantId'
-        - $ref: '#/components/parameters/AuthCookie'
       requestBody:
         required: true
         content:
@@ -189,12 +205,22 @@ paths:
           description: Merchant created.
         '403':
           description: Admin role required.
+      security:
+        - sessionCookie: []
+      description: >-
+        Admin session required. ownerUserId is always the authenticated user; the service also creates their
+        active admin membership.
   /products:
     get:
       summary: List merchant products
       operationId: listProducts
       parameters:
         - $ref: '#/components/parameters/MerchantId'
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Product list.
@@ -205,13 +231,12 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProductResponse'
       security: []
-      description: Active entries only. includeInactive=true requires member admin.
+      description: Active public catalog; defaults to STOREFRONT_MERCHANT_ID. includeInactive=true requires member admin.
     post:
       summary: Create a product
       operationId: createProduct
       parameters:
         - $ref: '#/components/parameters/MerchantId'
-        - $ref: '#/components/parameters/AuthCookie'
       requestBody:
         required: true
         content:
@@ -227,17 +252,25 @@ paths:
                 $ref: '#/components/schemas/ProductResponse'
         '403':
           description: Admin role required.
+        '409':
+          description: 'MERCHANT_SELECTION_REQUIRED: select one of GET /me/merchants.'
       security:
         - sessionCookie: []
       description: >-
-        Requires signed admin session and active admin membership in the merchant selected by X-Merchant-Id.
-        Body role/merchantId cannot grant access.
+        Signed admin session and active merchant membership required. With one store, merchantId is automatic;
+        with multiple stores, select using the merchantId query parameter. No merchant or role header grants
+        access.
   /categories:
     get:
       summary: List merchant categories
       operationId: listCategories
       parameters:
         - $ref: '#/components/parameters/MerchantId'
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Category list.
@@ -248,19 +281,12 @@ paths:
                 items:
                   $ref: '#/components/schemas/CategoryResponse'
       security: []
-      description: Active entries only. includeInactive=true requires member admin.
+      description: Active public catalog; defaults to STOREFRONT_MERCHANT_ID. includeInactive=true requires member admin.
     post:
       summary: Create a category
       operationId: createCategory
       parameters:
         - $ref: '#/components/parameters/MerchantId'
-        - name: X-User-Role
-          in: header
-          required: true
-          schema:
-            type: string
-            enum:
-              - admin
       requestBody:
         required: true
         content:
@@ -276,11 +302,14 @@ paths:
                 $ref: '#/components/schemas/CategoryResponse'
         '403':
           description: Admin role required.
+        '409':
+          description: 'MERCHANT_SELECTION_REQUIRED: select one of GET /me/merchants.'
       security:
         - sessionCookie: []
       description: >-
-        Requires signed admin session and active admin membership in the merchant selected by X-Merchant-Id.
-        Body role/merchantId cannot grant access.
+        Signed admin session and active merchant membership required. With one store, merchantId is automatic;
+        with multiple stores, select using the merchantId query parameter. No merchant or role header grants
+        access.
   /auth/register:
     post:
       summary: Register a buyer account
@@ -368,7 +397,9 @@ paths:
     post:
       summary: Accept a payment order
       operationId: createOrder
-      description: Validates and queues an order. Payment processing happens asynchronously.
+      description: >-
+        Server integration only: verified X-Api-Key required. Browser checkout uses
+        /commercial-orders/{orderId}/checkout with the owner session and saved prices.
       requestBody:
         required: true
         content:
@@ -399,13 +430,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - integrationKey: []
+      parameters: []
   /checkout/sessions:
     post:
       summary: Create a payment checkout session
       operationId: createCheckoutSession
-      description: Creates a pending Stripe or PayPal checkout session through the payment processor.
+      description: >-
+        Server integration only: verified X-Api-Key required. Browser checkout uses
+        /commercial-orders/{orderId}/checkout with the owner session and saved prices.
       parameters:
-        - $ref: '#/components/parameters/MerchantId'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -448,12 +483,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - integrationKey: []
   /payments/{paymentId}:
     get:
       summary: Get payment status
       operationId: getPayment
       parameters:
-        - $ref: '#/components/parameters/MerchantId'
         - name: paymentId
           in: path
           required: true
@@ -478,12 +514,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - sessionCookie: []
+        - integrationKey: []
   /refunds:
     post:
       summary: Create a payment refund
       operationId: createRefund
       parameters:
-        - $ref: '#/components/parameters/MerchantId'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -504,12 +542,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - sessionCookie: []
+      description: Active member admin of the payment merchant required. The merchant is derived from the saved payment.
   /merchants/{merchantId}/balance:
     get:
       summary: Get merchant balance
       operationId: getMerchantBalance
       parameters:
-        - $ref: '#/components/parameters/MerchantId'
         - name: merchantId
           in: path
           required: true
@@ -528,13 +568,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - sessionCookie: []
+      description: Active member admin of the merchant in the path required.
   /payouts:
     post:
       summary: Create a merchant payout
       operationId: createPayout
       parameters:
-        - $ref: '#/components/parameters/MerchantId'
         - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/MerchantId'
       requestBody:
         required: true
         content:
@@ -560,6 +603,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - sessionCookie: []
+      description: Active member admin required; sole store selected automatically, otherwise merchantId query is required.
   /carts/{cartId}/items/{productId}:
     patch:
       summary: Set quantity on an item in your active cart
@@ -880,6 +926,11 @@ paths:
           description: Stock or concurrent-update conflict. Reload before retrying.
 components:
   securitySchemes:
+    integrationKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Server integration secret; never expose in browser builds.
     cookieAuth:
       type: apiKey
       in: cookie
@@ -900,9 +951,9 @@ components:
         type: string
       description: HttpOnly access_token cookie issued by /auth/login.
     MerchantId:
-      name: X-Merchant-Id
-      in: header
-      required: true
+      name: merchantId
+      in: query
+      required: false
       schema:
         type: string
     IdempotencyKey:
