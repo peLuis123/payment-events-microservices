@@ -15,16 +15,11 @@ function requireOwner(request, resource) {
   }
   return resource;
 }
-async function requireMerchantAdmin(request, merchantId, getMembership) {
-  const userId = requireUser(request);
+async function requireStoreAdmin(request, merchantId) {
+  requireUser(request);
   if (!merchantId || request.user.role !== 'admin')
     throw new AppError('Admin access required', 403, 'FORBIDDEN');
-  const membership = await getMembership(merchantId, userId);
-  if (
-    !membership ||
-    membership.status !== 'active' ||
-    membership.role !== 'admin'
-  )
+  if (merchantId !== request.storefrontMerchantId)
     throw new AppError('Merchant access denied', 403, 'FORBIDDEN');
 }
-module.exports = { requireUser, requireOwner, requireMerchantAdmin };
+module.exports = { requireUser, requireOwner, requireStoreAdmin };

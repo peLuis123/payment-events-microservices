@@ -1,5 +1,5 @@
 const { AppError } = require('../middlewares/error.middleware');
-const { requireMerchantAdmin } = require('../services/resource-access');
+const { requireStoreAdmin } = require('../services/resource-access');
 const {
   productPatch,
   categoryPatch,
@@ -7,11 +7,7 @@ const {
   categoryCreate,
   validate,
 } = require('../validators/catalog.validator');
-function createCatalogController({
-  catalogService,
-  catalogRepository,
-  getMembership = async () => undefined,
-}) {
+function createCatalogController({ catalogService, catalogRepository }) {
   const handle = (fn) => async (req, res, next) => {
     try {
       await fn(req, res);
@@ -21,11 +17,15 @@ function createCatalogController({
   };
   const merchantId = (req) => req.merchantId || req.query.merchantId;
   async function admin(req, id) {
-    await requireMerchantAdmin(req, id, getMembership);
+    await requireStoreAdmin(req, id);
   }
   async function loadProduct(req) {
     const product = await catalogRepository.getProduct(req.params.productId);
-    if (!product || (merchantId(req) && product.merchantId !== merchantId(req)))
+    if (
+      !product ||
+      product.merchantId !== req.storefrontMerchantId ||
+      (merchantId(req) && product.merchantId !== merchantId(req))
+    )
       throw new AppError('Product not found', 404, 'NOT_FOUND');
     return product;
   }

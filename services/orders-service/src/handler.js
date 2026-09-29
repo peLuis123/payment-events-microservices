@@ -21,10 +21,6 @@ const {
   createCatalogRepository,
 } = require('../repositories/catalog.repository');
 const { createCatalogService } = require('../services/catalog.service');
-const { createMerchantService } = require('../services/merchant.service');
-const {
-  createMerchantRepository,
-} = require('../repositories/merchant.repository');
 const { createSessionAuth } = require('../middlewares/session-auth');
 const { createAuthService } = require('../services/auth.service');
 const {
@@ -106,12 +102,6 @@ function createProductionHandler({
     inventoryTable: environment.INVENTORY_TABLE || 'Inventory',
   });
   const catalogService = createCatalogService(catalogRepository);
-  const merchantRepository = createMerchantRepository({
-    client: dynamodb,
-    merchantsTable: environment.MERCHANTS_TABLE || 'Merchants',
-    merchantUsersTable: environment.MERCHANT_USERS_TABLE || 'MerchantUsers',
-  });
-  const merchantService = createMerchantService(merchantRepository);
   const commerceRepository = createCommerceRepository({
     client: dynamodb,
     tables: {
@@ -164,14 +154,10 @@ function createProductionHandler({
     authService,
     catalogService,
     catalogRepository,
-    merchantService,
     cartService,
     commercialOrderService,
     inventoryService,
     commerceRepository,
-    getMembership: merchantRepository.getMembership,
-    listMemberships: merchantRepository.listMemberships,
-    getMerchant: merchantRepository.getMerchant,
     storefrontMerchantId: environment.STOREFRONT_MERCHANT_ID,
     cartCreationService,
     rateLimiter: createRateLimiter({

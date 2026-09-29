@@ -60,7 +60,7 @@ function setup({
   };
 }
 const product = { name: 'Vase', price: 1000, currency: 'USD' };
-test('one membership resolves automatically and ignores forged merchant header', async () => {
+test('configured store is used without trusting merchant headers', async () => {
   const { app, cookie, catalogService } = setup();
   await request(app)
     .post('/products')
@@ -72,51 +72,36 @@ test('one membership resolves automatically and ignores forged merchant header',
     expect.objectContaining({ merchantId: 'm1' }),
   );
 });
-test('multiple stores require selection and reject a foreign store', async () => {
+test('store selection is unavailable and foreign query is rejected', async () => {
   const { app, cookie } = setup({ ids: ['m1', 'm2'] });
-  const list = await request(app)
-    .get('/me/merchants')
-    .set('Cookie', cookie)
-    .expect(200);
-  expect(list.body.map((m) => m.merchantId)).toEqual(['m1', 'm2']);
-  const ambiguous = await request(app)
-    .post('/products')
-    .set('Cookie', cookie)
-    .send(product)
-    .expect(409);
-  expect(ambiguous.body.code).toBe('MERCHANT_SELECTION_REQUIRED');
+  await request(app).get('/me/merchants').set('Cookie', cookie).expect(404);
   await request(app)
-    .post('/products?merchantId=m2')
+    .post('/products')
     .set('Cookie', cookie)
     .send(product)
     .expect(201);
   await request(app)
-    .post('/products?merchantId=foreign')
+    .post('/products?merchantId=m2')
     .set('Cookie', cookie)
     .send(product)
     .expect(403);
 });
 test.each([{ ids: [] }, { revoked: true }, { inactive: true }])(
-  'no usable membership grants no access: %j',
+  'store tables and memberships are not required: %j',
   async (options) => {
     const { app, cookie, catalogService } = setup(options);
-    const result = await request(app)
-      .get('/me/merchants')
-      .set('Cookie', cookie)
-      .expect(200);
-    expect(result.body).toEqual([]);
     await request(app)
       .post('/products')
       .set('Cookie', cookie)
       .send(product)
-      .expect(403);
-    expect(catalogService.createProduct).not.toHaveBeenCalled();
+      .expect(201);
+    expect(catalogService.createProduct).toHaveBeenCalledTimes(1);
   },
 );
-test('anonymous and buyer cannot list administrative memberships', async () => {
+test('anonymous and buyer cannot access admin balance', async () => {
   const { app, cookie } = setup({ role: 'buyer' });
-  await request(app).get('/me/merchants').expect(401);
-  await request(app).get('/me/merchants').set('Cookie', cookie).expect(403);
+  await request(app).get('/admin/balance').expect(401);
+  await request(app).get('/admin/balance').set('Cookie', cookie).expect(403);
 });
 test.each([
   '/refunds',
@@ -144,7 +129,8 @@ test('refund derives merchant from payment; header cannot move it to own store',
   expect(paymentClient.createRefund).not.toHaveBeenCalled();
 });
 test('member admin can refund a payment from their store without merchant header', async () => {
-  const { app, cookie, paymentClient } = setup({ ids: ['m2'] });
+  const { app, cookie, paymentClient } = setup();
+  paymentClient.getPayment.mockResolvedValue({ merchantId: 'm1' });
   await request(app)
     .post('/refunds')
     .set('Cookie', cookie)
@@ -196,26 +182,21 @@ test('payout requires member admin and auto-selects the only store', async () =>
     expect.objectContaining({ merchantId: 'm1' }),
   );
 });
-test('merchant owner is the signed-in user regardless of supplied body/header owner', async () => {
+test('new merchants cannot be created in single-store mode', async () => {
   const { app, cookie, merchantService } = setup();
   await request(app)
     .post('/merchants')
     .set('Cookie', cookie)
-    .set('X-Merchant-Id', 'victim')
-    .send({ name: 'Store', defaultCurrency: 'USD', ownerUserId: 'victim' })
-    .expect(201);
-  expect(merchantService.create).toHaveBeenCalledWith({
-    name: 'Store',
-    defaultCurrency: 'USD',
-    ownerUserId: 'u1',
-  });
+    .send({ name: 'Other' })
+    .expect(409);
+  expect(merchantService.create).not.toHaveBeenCalled();
 });
 test('public catalog works without authentication or headers', async () => {
   await request(setup().app).get('/products').expect(200);
 });
-test('disabled store blocks resource-based admin reads', async () => {
+test('legacy merchant status does not block the configured store admin', async () => {
   const { app, cookie } = setup({ inactive: true });
-  await request(app).get('/products/p1').set('Cookie', cookie).expect(403);
+  await request(app).get('/products/p1').set('Cookie', cookie).expect(200);
 });
 test('session alone cannot call raw-price integration checkout', async () => {
   const { app, cookie, checkoutService } = setup();

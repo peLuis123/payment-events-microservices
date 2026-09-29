@@ -4,7 +4,11 @@ function createBalanceController({ paymentClient }) {
   return async function getBalance(request, response, next) {
     try {
       const merchantId = request.merchantId;
-      if (!merchantId || merchantId !== request.params.merchantId) {
+      if (
+        !merchantId ||
+        merchantId !==
+          (request.params.merchantId || request.storefrontMerchantId)
+      ) {
         next(
           new AppError('Merchant authentication required', 401, 'UNAUTHORIZED'),
         );

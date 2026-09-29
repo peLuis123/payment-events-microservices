@@ -9,7 +9,10 @@ function createCommerceRoute(dependencies) {
   router.get('/carts/:cartId', controller.getCart);
   router.post('/commercial-orders', controller.createOrder);
   router.get('/commercial-orders', controller.listOrders);
-  router.get('/merchants/:merchantId/orders', controller.listMerchantOrders);
+  router.get(
+    ['/merchants/:merchantId/orders', '/admin/orders'],
+    controller.listMerchantOrders,
+  );
   router.post(
     '/commercial-orders/:orderId/checkout',
     controller.createCheckout,

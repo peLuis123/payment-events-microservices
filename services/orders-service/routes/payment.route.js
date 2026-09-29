@@ -3,11 +3,11 @@ const {
   createPaymentController,
 } = require('../controllers/payment.controller');
 
-function createPaymentRoute({ paymentClient, getMembership }) {
+function createPaymentRoute({ paymentClient }) {
   const router = express.Router();
   router.get(
     '/payments/:paymentId',
-    createPaymentController({ paymentClient, getMembership }),
+    createPaymentController({ paymentClient }),
   );
   return router;
 }

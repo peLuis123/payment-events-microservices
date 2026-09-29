@@ -2,15 +2,13 @@ const request = require('supertest');
 const { createApp } = require('../src/app');
 
 describe('merchant routes', () => {
-  test('admin creates a merchant', async () => {
+  test('single-store deployment rejects creating additional merchants', async () => {
     const merchantService = {
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          merchantId: 'merchant-123',
-          name: 'Main Store',
-          status: 'active',
-        }),
+      create: jest.fn().mockResolvedValue({
+        merchantId: 'merchant-123',
+        name: 'Main Store',
+        status: 'active',
+      }),
     };
     const sessionAuth = (request, response, next) => {
       request.user = { userId: 'admin-1', role: 'admin' };
@@ -28,9 +26,7 @@ describe('merchant routes', () => {
       .set('X-Merchant-Id', 'merchant-123')
       .send({ name: 'Main Store', defaultCurrency: 'USD' });
 
-    expect(response.status).toBe(201);
-    expect(merchantService.create).toHaveBeenCalledWith(
-      expect.objectContaining({ ownerUserId: 'admin-1' }),
-    );
+    expect(response.status).toBe(409);
+    expect(merchantService.create).not.toHaveBeenCalled();
   });
 });

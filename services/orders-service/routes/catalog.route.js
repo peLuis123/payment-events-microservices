@@ -3,16 +3,11 @@ const {
   createCatalogController,
 } = require('../controllers/catalog.controller');
 
-function createCatalogRoute({
-  catalogService,
-  catalogRepository,
-  getMembership,
-}) {
+function createCatalogRoute({ catalogService, catalogRepository }) {
   const router = express.Router();
   const controller = createCatalogController({
     catalogService,
     catalogRepository,
-    getMembership,
   });
   router.post('/products', controller.createProduct);
   router.get('/products', controller.listProducts);

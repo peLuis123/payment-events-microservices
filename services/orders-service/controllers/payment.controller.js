@@ -1,12 +1,9 @@
 const { AppError } = require('../middlewares/error.middleware');
 const {
   requireUser,
-  requireMerchantAdmin,
+  requireStoreAdmin,
 } = require('../services/resource-access');
-function createPaymentController({
-  paymentClient,
-  getMembership = async () => undefined,
-}) {
+function createPaymentController({ paymentClient }) {
   return async function getPayment(request, response, next) {
     try {
       if (!request.user && !request.merchantId) requireUser(request);
@@ -14,11 +11,7 @@ function createPaymentController({
       if (!payment) throw new AppError('Payment not found', 404, 'NOT_FOUND');
       if (request.user) {
         if (payment.userId !== request.user.userId)
-          await requireMerchantAdmin(
-            request,
-            payment.merchantId,
-            getMembership,
-          );
+          await requireStoreAdmin(request, payment.merchantId);
       } else if (payment.merchantId !== request.merchantId)
         throw new AppError('Access denied', 403, 'FORBIDDEN');
       response.json(payment);

@@ -2,14 +2,13 @@ const { AppError } = require('../middlewares/error.middleware');
 const {
   requireUser,
   requireOwner,
-  requireMerchantAdmin,
+  requireStoreAdmin,
 } = require('../services/resource-access');
 function createCommerceController({
   cartService,
   orderService,
   inventoryService,
   repository,
-  getMembership = async () => undefined,
 }) {
   const handle = (fn) => async (request, response, next) => {
     try {
@@ -35,16 +34,14 @@ function createCommerceController({
   return {
     addCartItem: handle(async (req, res) => {
       const cart = await cartFor(req);
-      res
-        .status(201)
-        .json(
-          await cartService.addItem({
-            ...req.body,
-            cartId: cart.cartId,
-            userId: cart.userId,
-            merchantId: cart.merchantId,
-          }),
-        );
+      res.status(201).json(
+        await cartService.addItem({
+          ...req.body,
+          cartId: cart.cartId,
+          userId: cart.userId,
+          merchantId: cart.merchantId,
+        }),
+      );
     }),
     updateCartItem: handle(async (req, res) => {
       const cart = await cartFor(req);
@@ -78,7 +75,7 @@ function createCommerceController({
       const order = await repository.getOrder(req.params.orderId);
       if (!order) throw new AppError('Order not found', 404, 'NOT_FOUND');
       if (order.userId !== req.user.userId)
-        await requireMerchantAdmin(req, order.merchantId, getMembership);
+        await requireStoreAdmin(req, order.merchantId);
       res.json({
         ...order,
         items: order.items || (await repository.getOrderItems(order.orderId)),
@@ -90,38 +87,35 @@ function createCommerceController({
     }),
     createOrder: handle(async (req, res) => {
       const cart = await cartFor(req);
-      res
-        .status(201)
-        .json(
-          await orderService.createFromCart({
-            cartId: cart.cartId,
-            userId: cart.userId,
-            merchantId: cart.merchantId,
-            currency: cart.currency,
-          }),
-        );
+      res.status(201).json(
+        await orderService.createFromCart({
+          cartId: cart.cartId,
+          userId: cart.userId,
+          merchantId: cart.merchantId,
+          currency: cart.currency,
+        }),
+      );
     }),
     listOrders: handle(async (req, res) =>
       res.json(await repository.listOrdersByUser(requireUser(req))),
     ),
     listMerchantOrders: handle(async (req, res) => {
-      await requireMerchantAdmin(req, req.params.merchantId, getMembership);
-      res.json(await repository.listOrders(req.params.merchantId));
+      const id = req.params.merchantId || req.storefrontMerchantId;
+      await requireStoreAdmin(req, id);
+      res.json(await repository.listOrders(id));
     }),
     createCheckout: handle(async (req, res) => {
       const order = await orderFor(req);
       const idempotencyKey = req.get('Idempotency-Key');
       if (!idempotencyKey)
         throw new AppError('Idempotency-Key required', 400, 'INVALID_CHECKOUT');
-      res
-        .status(201)
-        .json(
-          await orderService.createCheckout({
-            ...req.body,
-            orderId: order.orderId,
-            idempotencyKey,
-          }),
-        );
+      res.status(201).json(
+        await orderService.createCheckout({
+          ...req.body,
+          orderId: order.orderId,
+          idempotencyKey,
+        }),
+      );
     }),
     reserve: handle(async (req, res) => {
       const order = await orderFor(req);

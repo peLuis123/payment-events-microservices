@@ -2,7 +2,7 @@ const express = require('express');
 const { AppError } = require('../middlewares/error.middleware');
 const {
   requireUser,
-  requireMerchantAdmin,
+  requireStoreAdmin,
 } = require('../services/resource-access');
 const { createMerchantContext } = require('../services/merchant-context');
 const { createLogger } = require('../middlewares/logger');
@@ -17,7 +17,6 @@ const { createPayoutRoute } = require('../routes/payout.route');
 const { createRateLimiter } = require('../middlewares/rate-limiter');
 const { createAuthRoute } = require('../routes/auth.route');
 const { createCatalogRoute } = require('../routes/catalog.route');
-const { createMerchantRoute } = require('../routes/merchant.route');
 const { createCommerceRoute } = require('../routes/commerce.route');
 const { createCartRoute } = require('../routes/cart.route');
 
@@ -38,32 +37,18 @@ function createApp({
   authService,
   catalogService,
   catalogRepository,
-  merchantService,
   cartService,
   commercialOrderService,
   inventoryService,
   commerceRepository,
-  getMembership = async () => undefined,
-  listMemberships,
-  getMerchant,
-  storefrontMerchantId,
+  storefrontMerchantId = 'merchant-123',
   cartCreationService,
 }) {
   const app = express();
-  if (getMerchant) {
-    const lookupMembership = getMembership;
-    getMembership = async (merchantId, userId) => {
-      const merchant = await getMerchant(merchantId);
-      return merchant?.status === 'active'
-        ? lookupMembership(merchantId, userId)
-        : undefined;
-    };
-  }
-  const merchantContext = createMerchantContext({
-    getMembership,
-    listMemberships,
-    getMerchant,
-    storefrontMerchantId,
+  const merchantContext = createMerchantContext({ storefrontMerchantId });
+  app.use((req, res, next) => {
+    req.storefrontMerchantId = storefrontMerchantId;
+    next();
   });
   const guard = (fn) => async (req, res, next) => {
     try {
@@ -100,13 +85,17 @@ function createApp({
         ? merchantAuth(req, res, next)
         : next(),
     );
-  app.get('/me/merchants', async (req, res, next) => {
-    try {
-      res.json(await merchantContext.list(req));
-    } catch (error) {
-      next(error);
-    }
-  });
+  app.post(
+    '/merchants',
+    guard(async (req) => {
+      await merchantContext.resolveAdmin(req);
+      throw new AppError(
+        'Single-store mode: merchant creation is disabled',
+        409,
+        'SINGLE_STORE_MODE',
+      );
+    }),
+  );
   const integrationOnly = guard(async (req) => {
     if (!req.integrationMerchantId)
       throw new AppError('Integration API key required', 401, 'UNAUTHORIZED');
@@ -114,10 +103,11 @@ function createApp({
   app.post('/checkout/sessions', integrationOnly);
   app.post('/orders', integrationOnly);
   app.get(
-    '/merchants/:merchantId/balance',
+    ['/merchants/:merchantId/balance', '/admin/balance'],
     guard(async (req) => {
-      await requireMerchantAdmin(req, req.params.merchantId, getMembership);
-      req.merchantId = req.params.merchantId;
+      const id = req.params.merchantId || storefrontMerchantId;
+      await requireStoreAdmin(req, id);
+      req.merchantId = id;
     }),
   );
   app.post(
@@ -128,7 +118,7 @@ function createApp({
         throw new AppError('Payment ID required', 400, 'INVALID_REFUND');
       const payment = await paymentClient.getPayment(req.body.paymentId);
       if (!payment) throw new AppError('Payment not found', 404, 'NOT_FOUND');
-      await requireMerchantAdmin(req, payment.merchantId, getMembership);
+      await requireStoreAdmin(req, payment.merchantId);
       req.merchantId = payment.merchantId;
     }),
   );
@@ -169,7 +159,7 @@ function createApp({
   app.get('/', (request, response) => response.redirect('/docs/'));
   app.use('/docs', createDocsRoute());
   app.use(createCheckoutRoute({ checkoutService }));
-  app.use(createPaymentRoute({ paymentClient, getMembership }));
+  app.use(createPaymentRoute({ paymentClient }));
   app.use(createRefundRoute({ paymentClient }));
   app.use(createBalanceRoute({ paymentClient }));
   app.use(createPayoutRoute({ paymentClient }));
@@ -177,7 +167,6 @@ function createApp({
     app.use(
       createCatalogRoute({
         catalogService,
-        getMembership,
         catalogRepository: catalogRepository || {
           listProducts: async () => [],
           listCategories: async () => [],
@@ -185,7 +174,6 @@ function createApp({
       }),
     );
   }
-  if (merchantService) app.use(createMerchantRoute({ merchantService }));
   if (
     commerceRepository ||
     cartService ||
@@ -194,7 +182,6 @@ function createApp({
   ) {
     app.use(
       createCommerceRoute({
-        getMembership,
         cartService: cartService || { addItem: async () => ({}) },
         orderService: commercialOrderService || {
           createFromCart: async () => ({}),

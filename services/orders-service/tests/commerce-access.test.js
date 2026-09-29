@@ -10,13 +10,11 @@ function setup(user = { userId: 'buyer-1', role: 'buyer' }) {
   const repository = {
     getCart: jest.fn().mockResolvedValue(cart),
     getCartItems: jest.fn().mockResolvedValue([]),
-    getOrder: jest
-      .fn()
-      .mockResolvedValue({
-        orderId: 'order-1',
-        userId: 'buyer-1',
-        merchantId: 'shop-1',
-      }),
+    getOrder: jest.fn().mockResolvedValue({
+      orderId: 'order-1',
+      userId: 'buyer-1',
+      merchantId: 'shop-1',
+    }),
     listOrders: jest.fn().mockResolvedValue([{ orderId: 'all-store-orders' }]),
     listOrdersByUser: jest.fn().mockResolvedValue([]),
   };
@@ -30,15 +28,14 @@ function setup(user = { userId: 'buyer-1', role: 'buyer' }) {
   };
   const inventoryService = { reserve: jest.fn().mockResolvedValue({}) };
   const paymentClient = {
-    getPayment: jest
-      .fn()
-      .mockResolvedValue({
-        paymentId: 'pay-1',
-        userId: 'buyer-1',
-        merchantId: 'shop-1',
-      }),
+    getPayment: jest.fn().mockResolvedValue({
+      paymentId: 'pay-1',
+      userId: 'buyer-1',
+      merchantId: 'shop-1',
+    }),
   };
   const app = createApp({
+    storefrontMerchantId: 'shop-1',
     orderService: {},
     commerceRepository: repository,
     cartService,
@@ -96,7 +93,7 @@ test('owner can read cart and payment', async () => {
   await request(app).get('/carts/cart-1').expect(200);
   await request(app).get('/payments/pay-1').expect(200);
 });
-test('admin lists store orders only with active store membership', async () => {
+test('admin lists only configured store orders without memberships', async () => {
   const { app, repository, getMembership } = setup({
     userId: 'admin-1',
     role: 'admin',
@@ -105,7 +102,7 @@ test('admin lists store orders only with active store membership', async () => {
     .get('/merchants/shop-1/orders')
     .expect(200, [{ orderId: 'all-store-orders' }]);
   expect(repository.listOrders).toHaveBeenCalledWith('shop-1');
-  expect(getMembership).toHaveBeenCalledWith('shop-1', 'admin-1');
+  expect(getMembership).not.toHaveBeenCalled();
   getMembership.mockResolvedValue(undefined);
   await request(app).get('/merchants/other/orders').expect(403);
   expect(repository.listOrders).toHaveBeenCalledTimes(1);
@@ -124,11 +121,17 @@ test('reserves using only the authorized order ID', async () => {
   expect(inventoryService.reserve).toHaveBeenCalledWith({ orderId: 'order-1' });
 });
 
-test('admin reads a payment only with membership in its actual store', async () => {
-  const { app, getMembership } = setup({ userId: 'admin-1', role: 'admin' });
+test('admin reads only configured store payments', async () => {
+  const { app, getMembership, paymentClient } = setup({
+    userId: 'admin-1',
+    role: 'admin',
+  });
   await request(app).get('/payments/pay-1').expect(200);
-  expect(getMembership).toHaveBeenCalledWith('shop-1', 'admin-1');
-  getMembership.mockResolvedValue(undefined);
+  expect(getMembership).not.toHaveBeenCalled();
+  paymentClient.getPayment.mockResolvedValue({
+    merchantId: 'other',
+    userId: 'buyer-1',
+  });
   await request(app)
     .get('/payments/pay-1')
     .set('X-Merchant-Id', 'shop-1')

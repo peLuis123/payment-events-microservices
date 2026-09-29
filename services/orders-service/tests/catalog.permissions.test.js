@@ -39,6 +39,7 @@ function setup(role = 'admin', member = true) {
     updateInventory: jest.fn().mockResolvedValue({ availableQuantity: 10 }),
   };
   const app = createApp({
+    storefrontMerchantId: 'm1',
     getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
     orderService: {},
     catalogService: createCatalogService(repository),
@@ -87,13 +88,29 @@ test.each(writes)('anonymous cannot %s %s', async (method, path, body) => {
     .expect(401);
 });
 test.each(writes)(
-  'unrelated admin cannot %s %s',
+  'admin cannot access a different store on %s %s',
   async (method, path, body) => {
-    await request(setup('admin', false).app)
-      [method](path)
-      .query({ merchantId: 'm1' })
-      .send(body)
-      .expect(403);
+    const { app, repository } = setup();
+    if (method === 'post') {
+      await request(app)
+        [method](path)
+        .query({ merchantId: 'foreign' })
+        .send(body)
+        .expect(403);
+    } else {
+      repository.getProduct.mockResolvedValue({
+        productId: 'p1',
+        merchantId: 'foreign',
+      });
+      repository.getCategory.mockResolvedValue({
+        categoryId: 'c1',
+        merchantId: 'foreign',
+      });
+      await request(app)
+        [method](path)
+        .send(body)
+        .expect(path.startsWith('/products') ? 404 : 403);
+    }
   },
 );
 test.each(writes)('member admin can %s %s', async (method, path, body) => {
@@ -153,6 +170,7 @@ test('real signed sessions enforce buyer/admin roles even when API-key middlewar
   const { signTokenValue } = require('../services/auth.service');
   const createProduct = jest.fn().mockResolvedValue({ productId: 'new' });
   const app = createApp({
+    storefrontMerchantId: 'm1',
     getMerchant: async (merchantId) => ({ merchantId, status: 'active' }),
     orderService: {},
     catalogService: { createProduct },
