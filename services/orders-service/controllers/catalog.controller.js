@@ -1,4 +1,5 @@
 const { AppError } = require('../middlewares/error.middleware');
+const { catalogPagination, paginateCatalog } = require('../services/catalog-pagination');
 const { requireStoreAdmin } = require('../services/resource-access');
 const {
   productPatch,
@@ -58,9 +59,19 @@ function createCatalogController({ catalogService, catalogRepository }) {
         .status(201)
         .json(await catalogService.createCategory({ ...body, merchantId: id }));
     }),
-    listProducts: handle((req, res) =>
-      list(req, res, catalogRepository.listProducts),
-    ),
+    listProducts: handle(async (req, res) => {
+      // Keep the array contract for existing admin/detail integrations.
+      if (req.query.page === undefined && req.query.pageSize === undefined)
+        return list(req, res, catalogRepository.listProducts);
+      const options = catalogPagination(req.query);
+      const id = merchantId(req);
+      if (!id) throw new AppError('Merchant ID required', 400, 'INVALID_MERCHANT');
+      const includeInactive = req.query.includeInactive === 'true';
+      if (includeInactive) await admin(req, id);
+      const items = await catalogRepository.listProducts(id);
+      const categories = options.category ? await catalogRepository.listCategories(id) : [];
+      res.json(paginateCatalog(includeInactive ? items : items.filter(p => p.status === 'active'), options, categories));
+    }),
     listCategories: handle((req, res) =>
       list(req, res, catalogRepository.listCategories),
     ),
