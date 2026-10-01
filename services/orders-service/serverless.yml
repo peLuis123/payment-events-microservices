@@ -8,7 +8,7 @@ provider:
   region: ${opt:region, 'us-east-2'}
   stage: ${opt:stage, 'dev'}
   environment:
-    NODE_ENV: ${env:NODE_ENV, 'production'}
+    NODE_ENV: production
     SQS_QUEUE_URL: ${env:SQS_QUEUE_URL}
     PAYMENT_PROCESSOR_CHECKOUT_URL: ${env:PAYMENT_PROCESSOR_CHECKOUT_URL}
     STOREFRONT_MERCHANT_ID: ${env:STOREFRONT_MERCHANT_ID, 'merchant-123'}
@@ -17,8 +17,8 @@ provider:
     RATE_LIMIT_MAX: ${env:RATE_LIMIT_MAX, '60'}
     USERS_TABLE: ${env:USERS_TABLE, 'Users'}
     REFRESH_TOKENS_TABLE: ${env:REFRESH_TOKENS_TABLE, 'RefreshTokens'}
-    AUTH_TOKEN_SECRET: ${env:AUTH_TOKEN_SECRET, 'development-only-secret'}
-    FRONTEND_ORIGIN: ${env:FRONTEND_ORIGIN, 'http://localhost:5000'}
+    AUTH_TOKEN_SECRET: ${env:AUTH_TOKEN_SECRET}
+    FRONTEND_ORIGIN: ${env:FRONTEND_ORIGIN, 'https://casa-nativa.web.app'}
     PRODUCTS_TABLE: ${env:PRODUCTS_TABLE, 'Products'}
     CATEGORIES_TABLE: ${env:CATEGORIES_TABLE, 'Categories'}
     MERCHANTS_TABLE: ${env:MERCHANTS_TABLE, 'Merchants'}
@@ -275,7 +275,7 @@ functions:
     url:
       cors:
         allowedOrigins:
-          - ${env:FRONTEND_ORIGIN, 'http://localhost:5000'}
+          - ${env:FRONTEND_ORIGIN, 'https://casa-nativa.web.app'}
         allowedHeaders:
           - Content-Type
           - Cookie
