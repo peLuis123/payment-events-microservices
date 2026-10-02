@@ -1,41 +1,40 @@
 # Notification Service
 
-Consumidor de eventos SNS que simula el envío de notificaciones mediante logs estructurados.
+Consumidor de eventos SNS que registra notificaciones de pago mediante logs estructurados en CloudWatch.
 
-## Flujo
+## Procesamiento
 
-1. Recibe un envelope real de SNS.
-2. Valida los campos estándar de AWS y el evento de pago.
-3. Ignora eventos duplicados por `eventId` durante la vida de la instancia.
-4. Registra `Payment notification sent` sin exponer el payload completo.
-5. Propaga errores para permitir reintentos y DLQ.
+1. Valida el envelope SNS y el evento de pago.
+2. Comprueba si el `eventId` ya fue procesado por la instancia.
+3. Registra la notificación sin incluir el payload completo.
+4. Propaga los errores para permitir reintentos.
 
-## Desarrollo local
+El servicio utiliza un notificador de logs; no envía correos electrónicos. La deduplicación se mantiene en memoria durante la vida de cada instancia Lambda y no se comparte entre instancias.
 
-```cmd
-npm install
+## Instalación y pruebas
+
+```sh
+npm ci
 npm test
 npm run test:coverage
 ```
 
-El handler se prueba con eventos SNS simulados; no necesita un puerto HTTP.
+El handler se prueba con eventos SNS simulados y no requiere un servidor HTTP.
 
-## Variables de entorno
+## Configuración
 
-| Variable        | Uso                                |
-| --------------- | ---------------------------------- |
-| `SNS_TOPIC_ARN` | Topic SNS de resultados.           |
-| `AWS_REGION`    | Región local del SDK, `us-east-2`. |
-| `NODE_ENV`      | Entorno de ejecución.              |
+Usa `.env.example` como referencia para un `.env` local excluido de Git.
+
+| Variable | Uso |
+| --- | --- |
+| `SNS_TOPIC_ARN` | Topic SNS de resultados. |
+| `AWS_REGION` | Región del SDK. |
+| `NODE_ENV` | Entorno de ejecución. |
 
 ## Despliegue
 
-```cmd
-serverless deploy
+```sh
+npx serverless deploy
 ```
 
-El despliegue crea la Lambda, suscripción al topic SNS, DLQ y permiso para que SNS invoque la función.
-
-## Limitación del MVP
-
-La deduplicación actual usa memoria de la instancia Lambda. Para una garantía duradera entre cold starts se debe mover a DynamoDB o a otra store compartida en una fase posterior.
+`serverless.yml` configura la Lambda, la suscripción SNS, los permisos y la DLQ. El punto de entrada es `src/handler.handler`.

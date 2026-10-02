@@ -1,41 +1,50 @@
 # Payment Processor
 
-Consumidor de `payment-queue` que procesa pagos y publica resultados en SNS.
+Servicio de procesamiento de pagos con adapters de Stripe y PayPal. Incluye consumo de órdenes desde SQS y funciones HTTP para checkout y operaciones financieras.
 
-## Flujo
+## Responsabilidades
 
-1. Recibe un evento `payment.requested` desde SQS.
-2. Valida el mensaje con Zod.
-3. Ejecuta la decisión simulada: hasta `1000 USD` se aprueba; por encima se rechaza.
-4. Persiste el resultado en DynamoDB `Orders`.
-5. Publica `payment.approved` o `payment.rejected` en `payment-events`.
-6. Usa el `eventId` para evitar efectos duplicados.
+- Procesar eventos `payment.requested` y publicar resultados en SNS.
+- Crear sesiones de Stripe Checkout y órdenes de PayPal.
+- Persistir pagos y consultar su estado.
+- Procesar solicitudes de reembolso y retiro mediante los adapters de proveedores.
+- Registrar movimientos contables, balances y liquidaciones mediante sus repositorios y servicios.
 
-## Desarrollo local
+El consumidor de órdenes conserva un flujo simulado de aprobación/rechazo. Ese flujo es independiente del checkout que utiliza credenciales de Stripe o PayPal.
 
-```cmd
-npm install
+## Instalación y pruebas
+
+```sh
+npm ci
 npm test
 npm run test:coverage
 ```
 
-El handler se prueba con eventos SQS simulados; no necesita un puerto HTTP.
+Los tests usan eventos y dependencias simuladas. No requieren realizar cobros ni transferencias reales.
 
-## Variables de entorno
+## Configuración
 
-| Variable             | Uso                                    |
-| -------------------- | -------------------------------------- |
-| `SQS_QUEUE_URL`      | URL de la cola de entrada.             |
-| `SQS_QUEUE_ARN`      | ARN del trigger SQS.                   |
-| `DYNAMODB_TABLE`     | Tabla de resultados, `Orders`.         |
-| `DYNAMODB_TABLE_ARN` | ARN usado por IAM.                     |
-| `SNS_TOPIC_ARN`      | Topic de resultados, `payment-events`. |
-| `AWS_REGION`         | Región local del SDK, `us-east-2`.     |
+Utiliza `.env.example` como referencia y configura los valores requeridos por `serverless.yml` en un `.env` local excluido de Git o en el entorno de despliegue.
+
+| Variable | Uso |
+| --- | --- |
+| `SQS_QUEUE_URL`, `SQS_QUEUE_ARN` | Cola de entrada y trigger SQS. |
+| `SNS_TOPIC_ARN` | Publicación de eventos de pago. |
+| `DYNAMODB_TABLE`, `DYNAMODB_TABLE_ARN` | Tabla del flujo de órdenes. |
+| `PAYMENTS_TABLE`, `PAYMENTS_TABLE_ARN` | Persistencia de pagos y referencia IAM. |
+| `REFUNDS_TABLE`, `PAYOUTS_TABLE` | Reembolsos y retiros. |
+| `LEDGER_TABLE`, `BALANCES_TABLE` | Contabilidad y balances. |
+| `STRIPE_SECRET_KEY` | Clave de Stripe; determina el modo de prueba o real. |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | Credenciales de PayPal. |
+| `PAYPAL_ENVIRONMENT` | `production` usa PayPal real; el valor predeterminado es `sandbox`. |
+| `AWS_REGION` | Región del SDK. |
+
+Los importes del checkout se representan en unidades menores de la moneda. Las llamadas a proveedores utilizan claves de idempotencia para identificar reintentos.
 
 ## Despliegue
 
-```cmd
-serverless deploy
+```sh
+npx serverless deploy
 ```
 
-El trigger, la DLQ, los permisos IAM y la suscripción de entrada se definen en `serverless.yml`.
+`serverless.yml` define las funciones, triggers, permisos y recursos. `src/checkout-handler.js` configura las dependencias del checkout; `src/handler.js` corresponde al consumidor de órdenes. La API del ecommerce utiliza la URL del procesador mediante `PAYMENT_PROCESSOR_CHECKOUT_URL`.
